@@ -14,14 +14,14 @@ import {
   formatVolume,
   formatPercent,
 } from "@/src/utils/formatters";
-import { getGainersAndLosers, generatePriceHistory } from "@/src/functions/marketFunctions";
+import { getGainersAndLosers } from "@/src/functions/marketFunctions";
 import { getChangeColor, getChangeBgColor, cn } from "@/src/utils/helpers";
 
 const SECTORS = ["ALL", "Energy", "Banking", "Technology", "Industrial", "Consumer", "Finance"];
 
 export default function MarketPage() {
   const dispatch = useAppDispatch();
-  const { stocks, indices, selectedStock } = useAppSelector((s) => s.market);
+  const { stocks, indices, selectedStock, priceHistory, loading } = useAppSelector((s) => s.market);
   const [search, setSearch] = useState("");
   const [sector, setSector] = useState("ALL");
   const [sortField, setSortField] = useState<keyof Stock>("changePercent");
@@ -46,11 +46,6 @@ export default function MarketPage() {
     });
   }, [stocks, search, sector, sortField, sortDir]);
 
-  const priceHistory = useMemo(
-    () => selectedStock ? generatePriceHistory(selectedStock.price, 30, 0.015) : [],
-    [selectedStock]
-  );
-
   const handleSort = (field: keyof Stock) => {
     if (sortField === field) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     else { setSortField(field); setSortDir("desc"); }
@@ -58,6 +53,24 @@ export default function MarketPage() {
 
   return (
     <div className="space-y-4 md:space-y-6">
+      {/* Live data status bar */}
+      <div className="flex items-center justify-between text-xs text-slate-500">
+        <span className="font-medium text-slate-700">SET Market</span>
+        <div className="flex items-center gap-1.5">
+          {loading ? (
+            <>
+              <span className="inline-block h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
+              Refreshing...
+            </>
+          ) : (
+            <>
+              <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
+              Live · updates every 60s
+            </>
+          )}
+        </div>
+      </div>
+
       {/* Indices — 2 cols on mobile, 4 on desktop */}
       <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
         {indices.map((idx) => (
