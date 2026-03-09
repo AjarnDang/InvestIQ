@@ -3,33 +3,14 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  LayoutDashboard,
-  PieChart,
-  BarChart2,
-  ArrowLeftRight,
-  Star,
-  Settings,
-  ChevronLeft,
-  ChevronRight,
-  TrendingUp,
-  X,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight, TrendingUp, X } from "lucide-react";
 import { cn } from "@/src/utils/helpers";
 import { useAppDispatch, useAppSelector } from "@/src/store/hooks";
 import { toggleSidebar, setMobileMenuOpen } from "@/src/slices/uiSlice";
+import { MAIN_NAV_ITEMS, SETTINGS_NAV_ITEMS } from "@/src/data/navigation";
 
-const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/portfolio", label: "Portfolio", icon: PieChart },
-  { href: "/market", label: "Market", icon: BarChart2 },
-  { href: "/transactions", label: "Transactions", icon: ArrowLeftRight },
-  { href: "/watchlist", label: "Watchlist", icon: Star },
-];
-
-const bottomItems = [
-  { href: "/settings", label: "Settings", icon: Settings },
-];
+const navItems = MAIN_NAV_ITEMS;
+const bottomItems = SETTINGS_NAV_ITEMS;
 
 interface SidebarProps {
   mobile?: boolean;

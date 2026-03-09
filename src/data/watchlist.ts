@@ -1,0 +1,46 @@
+import type { WatchlistItem } from "@/src/types";
+
+export const MOCK_WATCHLIST: WatchlistItem[] = [
+  {
+    symbol: "SCC",
+    name: "Siam Cement Group PCL",
+    sector: "Industrial",
+    price: 285.0,
+    change: 3.0,
+    changePercent: 1.06,
+    alertPrice: 300.0,
+    alertEnabled: true,
+    addedAt: "2026-02-15",
+  },
+  {
+    symbol: "ADVANC",
+    name: "Advanced Info Service PCL",
+    sector: "Technology",
+    price: 224.0,
+    change: -0.5,
+    changePercent: -0.22,
+    alertEnabled: false,
+    addedAt: "2026-02-20",
+  },
+  {
+    symbol: "BBL",
+    name: "Bangkok Bank PCL",
+    sector: "Banking",
+    price: 148.0,
+    change: 1.0,
+    changePercent: 0.68,
+    alertPrice: 140.0,
+    alertEnabled: true,
+    addedAt: "2026-02-22",
+  },
+  {
+    symbol: "TRUE",
+    name: "True Corporation PCL",
+    sector: "Technology",
+    price: 8.7,
+    change: 0.15,
+    changePercent: 1.75,
+    alertEnabled: false,
+    addedAt: "2026-03-01",
+  },
+];

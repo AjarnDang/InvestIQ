@@ -3,22 +3,10 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  LayoutDashboard,
-  PieChart,
-  BarChart2,
-  ArrowLeftRight,
-  Star,
-} from "lucide-react";
 import { cn } from "@/src/utils/helpers";
+import { BOTTOM_NAV_ITEMS } from "@/src/data/navigation";
 
-const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/portfolio", label: "Portfolio", icon: PieChart },
-  { href: "/market", label: "Market", icon: BarChart2 },
-  { href: "/transactions", label: "Txns", icon: ArrowLeftRight },
-  { href: "/watchlist", label: "Watchlist", icon: Star },
-];
+const navItems = BOTTOM_NAV_ITEMS;
 
 export function BottomNav() {
   const pathname = usePathname();

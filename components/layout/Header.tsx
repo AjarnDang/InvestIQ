@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Bell,
   User,
@@ -9,6 +10,7 @@ import {
   Check,
   Menu,
   X,
+  LogOut,
 } from "lucide-react";
 import { cn } from "@/src/utils/helpers";
 import { useAppDispatch, useAppSelector } from "@/src/store/hooks";
@@ -17,27 +19,30 @@ import {
   markNotificationRead,
   toggleMobileMenu,
 } from "@/src/slices/uiSlice";
+import { logout } from "@/src/slices/authSlice";
 import { timeAgo } from "@/src/utils/formatters";
+import { PAGE_TITLE_MAP } from "@/src/data/navigation";
 
-const PAGE_TITLES: Record<string, string> = {
-  "/dashboard": "Dashboard",
-  "/portfolio": "Portfolio",
-  "/market": "Market",
-  "/transactions": "Transactions",
-  "/watchlist": "Watchlist",
-  "/settings": "Settings",
-};
+const PAGE_TITLES = PAGE_TITLE_MAP;
 
 interface HeaderProps {
   pathname: string;
 }
 
 export function Header({ pathname }: HeaderProps) {
+  const router = useRouter();
   const dispatch = useAppDispatch();
   const notifications = useAppSelector((s) => s.ui.notifications);
+  const user = useAppSelector((s) => s.auth.user);
   const unreadCount = notifications.filter((n) => !n.read).length;
   const [showNotif, setShowNotif] = useState(false);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+
+  const handleLogout = () => {
+    dispatch(logout());
+    router.replace("/home");
+  };
 
   const title = PAGE_TITLES[pathname] ?? "InvestIQ";
 
@@ -199,14 +204,47 @@ export function Header({ pathname }: HeaderProps) {
           )}
         </div>
 
-        {/* Profile */}
-        <button className="flex items-center gap-2 rounded-lg border border-slate-200 px-2 md:px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors">
-          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-100 flex-shrink-0">
-            <User size={12} className="text-indigo-600" />
-          </div>
-          <span className="hidden lg:block font-medium">Alex Chen</span>
-          <ChevronDown size={12} className="text-slate-400 hidden md:block" />
-        </button>
+        {/* Profile + Logout */}
+        <div className="relative">
+          <button
+            onClick={() => setShowProfileMenu((v) => !v)}
+            className="flex items-center gap-2 rounded-lg border border-slate-200 px-2 md:px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+          >
+            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-100 flex-shrink-0">
+              <User size={12} className="text-indigo-600" />
+            </div>
+            <span className="hidden lg:block font-medium">
+              {user?.name ?? "Account"}
+            </span>
+            <ChevronDown size={12} className="text-slate-400 hidden md:block" />
+          </button>
+
+          {showProfileMenu && (
+            <>
+              <div
+                className="fixed inset-0 z-40"
+                onClick={() => setShowProfileMenu(false)}
+              />
+              <div className="absolute right-0 top-11 z-50 w-52 rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden">
+                <div className="px-4 py-3 border-b border-slate-100">
+                  <p className="text-xs font-semibold text-slate-700 truncate">
+                    {user?.name}
+                  </p>
+                  <p className="text-[11px] text-slate-400 truncate">{user?.email}</p>
+                </div>
+                <div className="p-1">
+                  <button
+                    onClick={handleLogout}
+                    className="w-full flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors text-left"
+                  >
+                    <LogOut size={14} />
+                    Sign Out
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </header>
   );
