@@ -26,7 +26,16 @@ interface YahooQuoteResponse {
   };
 }
 
+interface YahooChartMeta {
+  regularMarketPrice?: number;
+  previousClose?: number;
+  chartPreviousClose?: number;
+  regularMarketChange?: number;
+  regularMarketChangePercent?: number;
+}
+
 interface YahooChartResult {
+  meta?: YahooChartMeta;
   timestamp?: number[];
   indicators?: {
     quote?: Array<{
@@ -107,6 +116,33 @@ export function transformQuotesToGlobalIndices(raw: YahooQuoteResponse): MarketI
       changePercent: round2(q.regularMarketChangePercent ?? 0),
     }];
   });
+}
+
+// ─── Transform: Chart meta → single MarketIndex quote ────────────────────────
+
+/**
+ * Extracts the current price + change from a v8/finance/chart response.
+ * Used for indices/forex where we only need the latest quote, not full OHLCV history.
+ */
+export function transformChartToQuote(
+  raw: YahooChartResponse,
+  displayName: string
+): MarketIndex | null {
+  const meta = raw?.chart?.result?.[0]?.meta;
+  if (!meta?.regularMarketPrice) return null;
+
+  const price      = meta.regularMarketPrice;
+  const prevClose  = meta.previousClose ?? meta.chartPreviousClose ?? price;
+  const change     = meta.regularMarketChange ?? price - prevClose;
+  const changePct  = meta.regularMarketChangePercent ??
+                     (prevClose > 0 ? ((price - prevClose) / prevClose) * 100 : 0);
+
+  return {
+    name:          displayName,
+    value:         round2(price),
+    change:        round2(change),
+    changePercent: round2(changePct),
+  };
 }
 
 // ─── Transform: Chart → PriceHistory[] ───────────────────────────────────────
