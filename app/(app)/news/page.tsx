@@ -12,28 +12,9 @@ import { useAppSelector, useAppDispatch } from "@/src/store/hooks";
 import { fetchMarketNews } from "@/src/slices/marketSlice";
 import { timeAgo } from "@/src/utils/formatters";
 import { cn } from "@/src/utils/helpers";
+import { getSourceBadgeClass, getSourceAccentClass } from "@/src/data/newsConfig";
 
 const ALL_SOURCES = ["All", "MarketWatch", "CNBC", "Reuters", "Bangkok Post"];
-
-const SOURCE_CONFIG: Record<string, { bg: string; text: string }> = {
-  "MarketWatch":  { bg: "bg-emerald-100", text: "text-emerald-700" },
-  "CNBC":         { bg: "bg-red-100",     text: "text-red-700"     },
-  "Reuters":      { bg: "bg-orange-100",  text: "text-orange-700"  },
-  "Bangkok Post": { bg: "bg-blue-100",    text: "text-blue-700"    },
-};
-
-function sourceBadge(source: string) {
-  const cfg = SOURCE_CONFIG[source];
-  return cfg ? `${cfg.bg} ${cfg.text}` : "bg-slate-100 text-slate-600";
-}
-
-// Map source → accent colour for card top border
-const SOURCE_ACCENT: Record<string, string> = {
-  "MarketWatch":  "border-t-emerald-400",
-  "CNBC":         "border-t-red-400",
-  "Reuters":      "border-t-orange-400",
-  "Bangkok Post": "border-t-blue-400",
-};
 
 export default function NewsPage() {
   const dispatch = useAppDispatch();
@@ -118,7 +99,7 @@ export default function NewsPage() {
       {!loadingNews && filtered.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((item, i) => {
-            const accentBorder = SOURCE_ACCENT[item.source] ?? "border-t-slate-300";
+            const accentBorder = getSourceAccentClass(item.source);
             const isFeatured = i === 0 && activeSource === "All";
 
             return (
@@ -139,7 +120,7 @@ export default function NewsPage() {
                   <span
                     className={cn(
                       "text-[10px] font-semibold px-2 py-0.5 rounded",
-                      sourceBadge(item.source),
+                      getSourceBadgeClass(item.source),
                     )}
                   >
                     {item.source}

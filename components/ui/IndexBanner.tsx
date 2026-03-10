@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef, useState, useCallback, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import {
   ChevronLeft,
   ChevronRight,
@@ -10,6 +11,7 @@ import {
 } from "lucide-react";
 import type { MarketIndex } from "@/src/types";
 import { GLOBAL_INDEX_META } from "@/src/data/globalIndices";
+import { getIndexNavAlias } from "@/src/data/indexAliases";
 import { formatInteger } from "@/src/utils/formatters";
 import { getChangeColor, cn } from "@/src/utils/helpers";
 
@@ -41,12 +43,20 @@ export function IndexBanner({
   loadingGlobal = false,
   className,
 }: Props) {
+  const router      = useRouter();
   const bannerRef   = useRef<HTMLDivElement>(null);
   const isDragging  = useRef(false);
+  const dragMoved   = useRef(false);   // true if mouse moved significantly while dragging
   const dragStartX  = useRef(0);
   const dragScrollL = useRef(0);
   const [showLeft,  setShowLeft]  = useState(false);
   const [showRight, setShowRight] = useState(false);
+
+  function goToDetail(name: string) {
+    if (dragMoved.current) return; // was a scroll drag, not a click
+    const alias = getIndexNavAlias(name);
+    if (alias) router.push(`/stocks/${alias}`);
+  }
 
   const allIndices = useMemo(
     () => [...indices, ...globalIndices],
@@ -72,6 +82,7 @@ export function IndexBanner({
     const el = bannerRef.current;
     if (!el) return;
     isDragging.current  = true;
+    dragMoved.current   = false;
     dragStartX.current  = e.pageX - el.getBoundingClientRect().left;
     dragScrollL.current = el.scrollLeft;
     el.style.cursor     = "grabbing";
@@ -81,8 +92,10 @@ export function IndexBanner({
   const onMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!isDragging.current || !bannerRef.current) return;
     e.preventDefault();
-    const x = e.pageX - bannerRef.current.getBoundingClientRect().left;
-    bannerRef.current.scrollLeft = dragScrollL.current - (x - dragStartX.current) * 1.4;
+    const x    = e.pageX - bannerRef.current.getBoundingClientRect().left;
+    const diff = x - dragStartX.current;
+    if (Math.abs(diff) > 4) dragMoved.current = true; // treat as drag if moved > 4px
+    bannerRef.current.scrollLeft = dragScrollL.current - diff * 1.4;
   }, []);
 
   const stopDrag = useCallback(() => {
@@ -142,9 +155,10 @@ export function IndexBanner({
               {indices.map((idx) => (
                 <div
                   key={idx.name}
-                  className="shrink-0 flex flex-col rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm min-w-[100px]"
+                  onClick={() => goToDetail(idx.name)}
+                  className="shrink-0 flex flex-col rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm min-w-[100px] cursor-pointer hover:border-indigo-300 hover:shadow-md transition-all group"
                 >
-                  <p className="text-[10px] text-slate-400 font-medium whitespace-nowrap mb-0.5">
+                  <p className="text-[10px] text-slate-400 font-medium whitespace-nowrap mb-0.5 group-hover:text-indigo-500 transition-colors">
                     {INDEX_FLAG[idx.name] ?? "🏳"} {idx.name}
                   </p>
                   <p className="text-sm font-bold text-slate-800 tabular-nums">
@@ -175,12 +189,18 @@ export function IndexBanner({
                   return (
                     <div
                       key={idx.name}
+                      onClick={() => !isPlaceholder && goToDetail(idx.name)}
                       className={cn(
-                        "shrink-0 flex flex-col rounded-xl border bg-white px-3 py-2 shadow-sm min-w-[100px]",
-                        isPlaceholder ? "border-slate-100 animate-pulse" : "border-slate-200"
+                        "shrink-0 flex flex-col rounded-xl border bg-white px-3 py-2 shadow-sm min-w-[100px] group transition-all",
+                        isPlaceholder
+                          ? "border-slate-100 animate-pulse"
+                          : "border-slate-200 cursor-pointer hover:border-indigo-300 hover:shadow-md",
                       )}
                     >
-                      <p className="text-[10px] text-slate-400 font-medium whitespace-nowrap mb-0.5">
+                      <p className={cn(
+                        "text-[10px] text-slate-400 font-medium whitespace-nowrap mb-0.5",
+                        !isPlaceholder && "group-hover:text-indigo-500 transition-colors",
+                      )}>
                         {flag} {idx.name}
                       </p>
                       {isPlaceholder ? (

@@ -70,6 +70,8 @@ export function transformQuotesToStocks(raw: YahooQuoteResponse): Stock[] {
       symbol:          meta.symbol,
       name:            meta.name,
       sector:          meta.sector,
+      instrumentType:  meta.type ?? "STOCK",
+      exchange:        meta.exchange,
       price:           round2(q.regularMarketPrice ?? 0),
       change:          round2(q.regularMarketChange ?? 0),
       changePercent:   round2(q.regularMarketChangePercent ?? 0),

@@ -7,6 +7,7 @@ import {
   LineChart,
   type LucideIcon,
 } from "lucide-react";
+import type { LearnTopic, Article, PromoItem } from "@/src/types";
 
 // ─── Hero Preview ────────────────────────────────────────────────────────────
 
@@ -179,3 +180,121 @@ export const LOGIN_PREVIEW_STATS: PreviewStat[] = [
 
 /** Bar heights (%) for the decorative mini-chart in the login panel */
 export const LOGIN_CHART_BARS: number[] = [30, 45, 38, 55, 48, 62, 58, 70, 65, 78, 72, 85];
+
+// ─── Home page — Learn section ────────────────────────────────────────────────
+export const LEARN_TOPICS: LearnTopic[] = [
+  {
+    icon:  "📖",
+    title: "หุ้นคืออะไร?",
+    desc:  "เรียนรู้พื้นฐานการลงทุนในตลาดหุ้น ตั้งแต่การซื้อขายไปจนถึงการเลือกหุ้นที่ดี",
+    time:  "5 นาที",
+  },
+  {
+    icon:  "📊",
+    title: "อ่านงบการเงินอย่างง่าย",
+    desc:  "เข้าใจงบกำไรขาดทุน งบดุล และกระแสเงินสด ในแบบที่ทุกคนเข้าใจได้",
+    time:  "10 นาที",
+  },
+  {
+    icon:  "🔍",
+    title: "Technical Analysis",
+    desc:  "เรียนรู้การวิเคราะห์กราฟ แนวรับ-แนวต้าน และ Indicators ยอดนิยม",
+    time:  "15 นาที",
+  },
+  {
+    icon:  "🏦",
+    title: "กองทุนรวมคืออะไร?",
+    desc:  "เปรียบเทียบประเภทกองทุน LTF, RMF, SSF พร้อมแนวทางการเลือกลงทุน",
+    time:  "7 นาที",
+  },
+  {
+    icon:  "⚖️",
+    title: "บริหารความเสี่ยง",
+    desc:  "Portfolio Diversification, Stop Loss และ Position Sizing เพื่อจำกัดความเสียหาย",
+    time:  "8 นาที",
+  },
+  {
+    icon:  "🌍",
+    title: "ลงทุนต่างประเทศ",
+    desc:  "วิธีเข้าถึงหุ้นสหรัฐ ETF Global และ DR ผ่านโบรกเกอร์ไทยอย่างง่ายดาย",
+    time:  "12 นาที",
+  },
+];
+
+// ─── Home page — Latest Articles section ─────────────────────────────────────
+export const MOCK_ARTICLES: Article[] = [
+  {
+    id:       "a1",
+    tag:      "วิเคราะห์หุ้น",
+    tagColor: "bg-indigo-100 text-indigo-700",
+    title:    "10 หุ้น SET ที่น่าจับตาในไตรมาส 2 ปี 2026",
+    excerpt:  "สรุปหุ้นที่มีปัจจัยพื้นฐานแข็งแกร่ง กำไรเติบโต และ Valuation น่าสนใจ",
+    readTime: "8 นาที",
+    date:     "9 มี.ค. 2026",
+    gradient: "from-indigo-500 to-violet-500",
+  },
+  {
+    id:       "a2",
+    tag:      "กองทุน",
+    tagColor: "bg-emerald-100 text-emerald-700",
+    title:    "เปรียบเทียบกองทุน SSF vs RMF ปี 2026 เลือกแบบไหนดี?",
+    excerpt:  "ลดหย่อนภาษีได้สูงสุด พร้อม Flow การลงทุนที่เหมาะสมกับแต่ละช่วงวัย",
+    readTime: "6 นาที",
+    date:     "7 มี.ค. 2026",
+    gradient: "from-emerald-500 to-teal-500",
+  },
+  {
+    id:       "a3",
+    tag:      "US Market",
+    tagColor: "bg-red-100 text-red-700",
+    title:    "Fed Rate Decision: ผลกระทบต่อตลาดหุ้นไทยและสหรัฐ",
+    excerpt:  "วิเคราะห์ทิศทางดอกเบี้ย Fed และผลต่อการลงทุนในหุ้นและพันธบัตร",
+    readTime: "10 นาที",
+    date:     "5 มี.ค. 2026",
+    gradient: "from-orange-500 to-red-500",
+  },
+];
+
+// ─── Dashboard / Home Promo Carousel ─────────────────────────────────────────
+export const PROMO_ITEMS: PromoItem[] = [
+  {
+    id:       "1",
+    gradient: "from-indigo-600 via-indigo-500 to-violet-600",
+    badge:    "InvestIQ Pro",
+    emoji:    "✨",
+    title:    "Upgrade ฟรี 30 วัน",
+    subtitle: "รับการวิเคราะห์พอร์ตด้วย AI และ Smart Alerts แบบ Real-time ไม่มีข้อผูกมัด",
+    cta:      "ลองเลย",
+    ctaHref:  "#",
+  },
+  {
+    id:       "2",
+    gradient: "from-emerald-500 via-teal-500 to-cyan-500",
+    badge:    "0% Commission",
+    emoji:    "💸",
+    title:    "ซื้อขายหุ้น US ไม่มีค่าธรรมเนียม",
+    subtitle: "เปิดบัญชีวันนี้ รับเงินคืน $10 ทันที · ไม่มีขั้นต่ำในการเปิดบัญชี",
+    cta:      "เปิดบัญชี",
+    ctaHref:  "#",
+  },
+  {
+    id:       "3",
+    gradient: "from-orange-500 via-amber-500 to-yellow-400",
+    badge:    "Webinar ฟรี",
+    emoji:    "📈",
+    title:    "เรียนรู้กลยุทธ์หุ้น Growth",
+    subtitle: "Masterclass โดยนักวิเคราะห์มืออาชีพ · วันเสาร์ที่ 15 มีนาคม 2026",
+    cta:      "ลงทะเบียน",
+    ctaHref:  "#",
+  },
+  {
+    id:       "4",
+    gradient: "from-rose-500 via-pink-500 to-fuchsia-500",
+    badge:    "Smart Alert",
+    emoji:    "🔔",
+    title:    "ตั้ง Price Alert อัจฉริยะ",
+    subtitle: "รับการแจ้งเตือนทันทีเมื่อหุ้นถึงราคาเป้าหมาย · รองรับทุกอุปกรณ์",
+    cta:      "ตั้งค่าเลย",
+    ctaHref:  "#",
+  },
+];

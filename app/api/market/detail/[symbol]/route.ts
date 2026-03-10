@@ -1,37 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SYMBOL_TO_META } from "@/src/data/sectorMap";
+import { resolveAliasToYahoo } from "@/src/data/indexAliases";
+import type { StockDetail } from "@/src/types";
 
 export const revalidate = 60;
 
-export interface StockDetail {
-  symbol:        string;
-  name:          string;
-  price:         number;
-  change:        number;
-  changePercent: number;
-  open?:         number;
-  prevClose?:    number;
-  dayHigh?:      number;
-  dayLow?:       number;
-  marketCap?:    number;
-  volume?:       number;
-  avgVolume?:    number;
-  pe?:           number;
-  eps?:          number;
-  dividendYield?: number;
-  high52?:       number;
-  low52?:        number;
-  beta?:         number;
-  sector?:       string;
-  industry?:     string;
-  description?:  string;
-  website?:      string;
-  country?:      string;
-  exchange?:     string;
-  currency?:     string;
-  quoteType?:    string;
-  employees?:    number;
-}
+// Re-export so existing imports from this route still compile
+export type { StockDetail };
 
 const YAHOO_HEADERS = {
   "User-Agent":
@@ -43,13 +18,30 @@ const YAHOO_HEADERS = {
 };
 
 /**
- * Resolve the correct Yahoo Finance ticker.
- * Thai SET stocks are stored in SYMBOL_TO_META with .BK suffix.
- * US / other stocks are used as-is.
+ * Resolve the correct Yahoo Finance ticker for the given app symbol.
+ *
+ * Resolution order:
+ *   1. Index alias (e.g. SPX → ^GSPC, SET50 → ^SET50.BK)
+ *   2. SET stock in SYMBOL_TO_META (e.g. CPALL → CPALL.BK)
+ *   3. Assume US stock — use symbol as-is (e.g. NVDA)
  */
 function resolveYahooSymbol(sym: string) {
-  const meta = SYMBOL_TO_META[sym.toUpperCase()] ?? null;
-  return { yahooSymbol: meta?.yahooSymbol ?? sym, stockMeta: meta };
+  const upper = sym.toUpperCase();
+
+  // 1. Index alias mapping (URL-safe aliases for market indices)
+  const indexYahoo = resolveAliasToYahoo(upper);
+  if (indexYahoo) {
+    return { yahooSymbol: indexYahoo, stockMeta: null };
+  }
+
+  // 2. Thai SET stock
+  const meta = SYMBOL_TO_META[upper] ?? null;
+  if (meta) {
+    return { yahooSymbol: meta.yahooSymbol, stockMeta: meta };
+  }
+
+  // 3. US or other exchange — use as-is
+  return { yahooSymbol: upper, stockMeta: null };
 }
 
 /**

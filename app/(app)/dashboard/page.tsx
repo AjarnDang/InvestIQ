@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Wallet,
   TrendingUp,
@@ -111,6 +112,7 @@ const columns: TableColumn<Holding & Record<string, unknown>>[] = [
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
+  const router = useRouter();
   const { summary, holdings, performance, allocation } = useAppSelector((s) => s.portfolio);
   const [tab, setTab] = useState<"overview" | "holdings">("overview");
 
@@ -304,12 +306,12 @@ export default function DashboardPage() {
           {/* Mobile: cards */}
           <div className="grid grid-cols-1 gap-3 md:hidden">
             {holdings.map((h) => (
-              <Card key={h.symbol}>
+              <Card key={h.symbol} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => router.push(`/stocks/${encodeURIComponent(h.symbol)}`)}>
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className="font-bold text-slate-800">{h.symbol}</p>
+                        <p className="font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">{h.symbol}</p>
                         <Badge variant="default" className="text-xs">{h.sector}</Badge>
                       </div>
                       <p className="text-xs text-slate-500 truncate mt-0.5">{h.name}</p>
@@ -356,6 +358,7 @@ export default function DashboardPage() {
                 columns={columns}
                 data={holdings as (Holding & Record<string, unknown>)[]}
                 emptyMessage="No holdings found"
+                onRowClick={(row) => router.push(`/stocks/${encodeURIComponent(row.symbol as string)}`)}
               />
             </CardContent>
           </Card>

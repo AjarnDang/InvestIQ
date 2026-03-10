@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Star,
   Bell,
@@ -27,6 +28,7 @@ import { formatDate } from "@/src/utils/formatters";
 import { getChangeColor, getChangeBgColor, cn } from "@/src/utils/helpers";
 
 export default function WatchlistPage() {
+  const router   = useRouter();
   const dispatch = useAppDispatch();
   const { items } = useAppSelector((s) => s.watchlist);
   const allStocks = useAppSelector((s) => s.market.stocks);
@@ -152,19 +154,19 @@ export default function WatchlistPage() {
         /* Responsive grid: 1 col mobile, 2 cols tablet, 3 cols desktop */
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {items.map((item: WatchlistItem) => (
-            <Card key={item.symbol} className="group overflow-hidden hover:shadow-md transition-shadow">
+            <Card key={item.symbol} className="group overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={() => router.push(`/stocks/${encodeURIComponent(item.symbol)}`)}>
               <CardContent className="p-4 md:p-5">
                 {/* Header */}
                 <div className="flex items-start justify-between">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-bold text-slate-800 text-xl leading-none">{item.symbol}</h3>
+                      <h3 className="font-bold text-slate-800 text-xl leading-none group-hover:text-indigo-600 transition-colors">{item.symbol}</h3>
                       <Badge variant="default" className="text-xs">{item.sector}</Badge>
                     </div>
                     <p className="mt-1 text-xs text-slate-500 truncate">{item.name}</p>
                   </div>
                   <button
-                    onClick={() => dispatch(removeItem(item.symbol))}
+                    onClick={(e) => { e.stopPropagation(); dispatch(removeItem(item.symbol)); }}
                     className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-300 hover:bg-red-50 hover:text-red-500 transition-colors flex-shrink-0 ml-2"
                     title="Remove from watchlist"
                   >
@@ -201,7 +203,7 @@ export default function WatchlistPage() {
                 </div>
 
                 {/* Alert Section */}
-                <div className="mt-4 pt-4 border-t border-slate-100">
+                <div className="mt-4 pt-4 border-t border-slate-100" onClick={(e) => e.stopPropagation()}>
                   {editAlert === item.symbol ? (
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-slate-500 flex-shrink-0">Alert ฿</span>

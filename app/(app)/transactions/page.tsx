@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { Filter, ArrowUpDown, DollarSign, ChevronDown, ChevronUp } from "lucide-react";
 import { useAppSelector, useAppDispatch } from "@/src/store/hooks";
 import { updateFilter, resetFilter } from "@/src/slices/transactionSlice";
@@ -29,6 +30,7 @@ const STATUS_OPTIONS: Array<{ value: TransactionStatus | "ALL"; label: string }>
 ];
 
 export default function TransactionsPage() {
+  const router   = useRouter();
   const dispatch = useAppDispatch();
   const { transactions, filter } = useAppSelector((s) => s.transactions);
   const [showFilters, setShowFilters] = React.useState(false);
@@ -191,7 +193,11 @@ export default function TransactionsPage() {
                 const cfg = TRANSACTION_TYPE_CONFIG[txn.type];
                 const statusCfg = STATUS_CONFIG[txn.status];
                 return (
-                  <div key={txn.id} className="px-4 py-3">
+                  <div
+                    key={txn.id}
+                    className={cn("px-4 py-3", txn.symbol && "cursor-pointer hover:bg-slate-50 transition-colors")}
+                    onClick={() => txn.symbol && router.push(`/stocks/${encodeURIComponent(txn.symbol)}`)}
+                  >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-2 min-w-0">
                         <span className={cn("inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-semibold flex-shrink-0", cfg.color)}>
@@ -253,7 +259,14 @@ export default function TransactionsPage() {
                     const cfg = TRANSACTION_TYPE_CONFIG[txn.type];
                     const statusCfg = STATUS_CONFIG[txn.status];
                     return (
-                      <tr key={txn.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                      <tr
+                        key={txn.id}
+                        className={cn(
+                          "border-b border-slate-100 hover:bg-slate-50 transition-colors",
+                          txn.symbol && "cursor-pointer",
+                        )}
+                        onClick={() => txn.symbol && router.push(`/stocks/${encodeURIComponent(txn.symbol)}`)}
+                      >
                         <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{formatDate(txn.date)}</td>
                         <td className="px-4 py-3">
                           <span className={cn("inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-semibold", cfg.color)}>

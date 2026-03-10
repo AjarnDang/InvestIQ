@@ -4,60 +4,8 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/src/utils/helpers";
-
-interface PromoItem {
-  id: string;
-  gradient: string;
-  badge: string;
-  emoji: string;
-  title: string;
-  subtitle: string;
-  cta: string;
-  ctaHref: string;
-}
-
-const PROMO_ITEMS: PromoItem[] = [
-  {
-    id: "1",
-    gradient: "from-indigo-600 via-indigo-500 to-violet-600",
-    badge: "InvestIQ Pro",
-    emoji: "✨",
-    title: "Upgrade ฟรี 30 วัน",
-    subtitle: "รับการวิเคราะห์พอร์ตด้วย AI และ Smart Alerts แบบ Real-time ไม่มีข้อผูกมัด",
-    cta: "ลองเลย",
-    ctaHref: "#",
-  },
-  {
-    id: "2",
-    gradient: "from-emerald-500 via-teal-500 to-cyan-500",
-    badge: "0% Commission",
-    emoji: "💸",
-    title: "ซื้อขายหุ้น US ไม่มีค่าธรรมเนียม",
-    subtitle: "เปิดบัญชีวันนี้ รับเงินคืน $10 ทันที · ไม่มีขั้นต่ำในการเปิดบัญชี",
-    cta: "เปิดบัญชี",
-    ctaHref: "#",
-  },
-  {
-    id: "3",
-    gradient: "from-orange-500 via-amber-500 to-yellow-400",
-    badge: "Webinar ฟรี",
-    emoji: "📈",
-    title: "เรียนรู้กลยุทธ์หุ้น Growth",
-    subtitle: "Masterclass โดยนักวิเคราะห์มืออาชีพ · วันเสาร์ที่ 15 มีนาคม 2026",
-    cta: "ลงทะเบียน",
-    ctaHref: "#",
-  },
-  {
-    id: "4",
-    gradient: "from-rose-500 via-pink-500 to-fuchsia-500",
-    badge: "Smart Alert",
-    emoji: "🔔",
-    title: "ตั้ง Price Alert อัจฉริยะ",
-    subtitle: "รับการแจ้งเตือนทันทีเมื่อหุ้นถึงราคาเป้าหมาย · รองรับทุกอุปกรณ์",
-    cta: "ตั้งค่าเลย",
-    ctaHref: "#",
-  },
-];
+import { PROMO_ITEMS } from "@/src/data/landingContent";
+import type { PromoItem } from "@/src/types";
 
 const AUTO_ADVANCE_MS = 5_000;
 

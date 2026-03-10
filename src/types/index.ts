@@ -25,6 +25,8 @@ export interface AuthState {
 }
 
 // ─── Market & Stock ───────────────────────────────────────────────────────────
+
+/** Broad industry / asset-class category shown on the UI. */
 export type StockSector =
   | "Energy"
   | "Banking"
@@ -34,21 +36,34 @@ export type StockSector =
   | "Consumer"
   | "Industrial"
   | "Utilities"
-  | "Finance";
+  | "Finance"
+  | "Communication"
+  | "Materials"
+  | "ETF"
+  | "Crypto"
+  | "Commodity"
+  | "Other";
+
+/** Financial instrument type — used for filtering and display logic. */
+export type InstrumentType = "STOCK" | "ETF" | "CRYPTO" | "COMMODITY";
 
 export interface Stock {
-  symbol: string;
-  name: string;
-  sector: StockSector;
-  price: number;
-  change: number;
-  changePercent: number;
-  volume: number;
-  marketCap: number;
-  high52w: number;
-  low52w: number;
-  peRatio?: number;
-  dividendYield?: number;
+  symbol:         string;
+  name:           string;
+  sector:         StockSector;
+  /** Instrument type — defaults to STOCK when absent. */
+  instrumentType?: InstrumentType;
+  /** Exchange where the instrument is listed (e.g. SET, NYSE, NASDAQ). */
+  exchange?:       string;
+  price:           number;
+  change:          number;
+  changePercent:   number;
+  volume:          number;
+  marketCap:       number;
+  high52w:         number;
+  low52w:          number;
+  peRatio?:        number;
+  dividendYield?:  number;
 }
 
 export interface MarketIndex {
@@ -222,6 +237,67 @@ export interface Notification {
   type: "info" | "success" | "warning" | "error";
   read: boolean;
   createdAt: string;
+}
+
+// ─── Stock Detail ─────────────────────────────────────────────────────────────
+export interface StockDetail {
+  symbol:         string;
+  name:           string;
+  price:          number;
+  change:         number;
+  changePercent:  number;
+  open?:          number;
+  prevClose?:     number;
+  dayHigh?:       number;
+  dayLow?:        number;
+  marketCap?:     number;
+  volume?:        number;
+  avgVolume?:     number;
+  pe?:            number;
+  eps?:           number;
+  dividendYield?: number;
+  high52?:        number;
+  low52?:         number;
+  beta?:          number;
+  sector?:        string;
+  industry?:      string;
+  description?:   string;
+  website?:       string;
+  country?:       string;
+  exchange?:      string;
+  currency?:      string;
+  quoteType?:     string;
+  employees?:     number;
+}
+
+// ─── Landing / Promo Content ──────────────────────────────────────────────────
+export interface PromoItem {
+  id:       string;
+  gradient: string;
+  badge:    string;
+  emoji:    string;
+  title:    string;
+  subtitle: string;
+  cta:      string;
+  ctaHref:  string;
+}
+
+export interface LearnTopic {
+  icon:  string;
+  title: string;
+  desc:  string;
+  time:  string;
+}
+
+export interface Article {
+  id:       string;
+  tag:      string;
+  tagColor: string;
+  title:    string;
+  excerpt:  string;
+  readTime: string;
+  date:     string;
+  gradient: string;
 }
 
 // ─── Component Props ──────────────────────────────────────────────────────────

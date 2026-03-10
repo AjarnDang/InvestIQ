@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   BarChart2,
   Newspaper,
@@ -26,102 +27,10 @@ import { IndexBanner } from "@/components/ui/IndexBanner";
 import { formatInteger, timeAgo } from "@/src/utils/formatters";
 import { getChangeColor, getChangeBgColor, cn } from "@/src/utils/helpers";
 import { GLOBAL_NAME_TO_META } from "@/src/data/globalIndices";
-
-// ── Constants ─────────────────────────────────────────────────────────────────
-const SOURCE_CONFIG: Record<string, { bg: string; text: string }> = {
-  MarketWatch: { bg: "bg-emerald-100", text: "text-emerald-700" },
-  CNBC: { bg: "bg-red-100", text: "text-red-700" },
-  Reuters: { bg: "bg-orange-100", text: "text-orange-700" },
-  "Bangkok Post": { bg: "bg-blue-100", text: "text-blue-700" },
-};
-function sourceBadge(src: string) {
-  const cfg = SOURCE_CONFIG[src];
-  return cfg ? `${cfg.bg} ${cfg.text}` : "bg-slate-100 text-slate-600";
-}
-
-// Thai SET region metadata
-const SET_REGION: Record<string, { flag: string; region: string }> = {
-  "SET Index": { flag: "🇹🇭", region: "ไทย" },
-  SET50: { flag: "🇹🇭", region: "ไทย" },
-  SET100: { flag: "🇹🇭", region: "ไทย" },
-  MAI: { flag: "🇹🇭", region: "ไทย" },
-};
-
-// Learn topics (static)
-const LEARN_TOPICS = [
-  {
-    icon: "📖",
-    title: "หุ้นคืออะไร?",
-    desc: "เรียนรู้พื้นฐานการลงทุนในตลาดหุ้น ตั้งแต่การซื้อขายไปจนถึงการเลือกหุ้นที่ดี",
-    time: "5 นาที",
-  },
-  {
-    icon: "📊",
-    title: "อ่านงบการเงินอย่างง่าย",
-    desc: "เข้าใจงบกำไรขาดทุน งบดุล และกระแสเงินสด ในแบบที่ทุกคนเข้าใจได้",
-    time: "10 นาที",
-  },
-  {
-    icon: "🔍",
-    title: "Technical Analysis",
-    desc: "เรียนรู้การวิเคราะห์กราฟ แนวรับ-แนวต้าน และ Indicators ยอดนิยม",
-    time: "15 นาที",
-  },
-  {
-    icon: "🏦",
-    title: "กองทุนรวมคืออะไร?",
-    desc: "เปรียบเทียบประเภทกองทุน LTF, RMF, SSF พร้อมแนวทางการเลือกลงทุน",
-    time: "7 นาที",
-  },
-  {
-    icon: "⚖️",
-    title: "บริหารความเสี่ยง",
-    desc: "Portfolio Diversification, Stop Loss และ Position Sizing เพื่อจำกัดความเสียหาย",
-    time: "8 นาที",
-  },
-  {
-    icon: "🌍",
-    title: "ลงทุนต่างประเทศ",
-    desc: "วิธีเข้าถึงหุ้นสหรัฐ ETF Global และ DR ผ่านโบรกเกอร์ไทยอย่างง่ายดาย",
-    time: "12 นาที",
-  },
-];
-
-// Mock articles (latest blog posts style)
-const MOCK_ARTICLES = [
-  {
-    id: "a1",
-    tag: "วิเคราะห์หุ้น",
-    tagColor: "bg-indigo-100 text-indigo-700",
-    title: "10 หุ้น SET ที่น่าจับตาในไตรมาส 2 ปี 2026",
-    excerpt:
-      "สรุปหุ้นที่มีปัจจัยพื้นฐานแข็งแกร่ง กำไรเติบโต และ Valuation น่าสนใจ",
-    readTime: "8 นาที",
-    date: "9 มี.ค. 2026",
-    gradient: "from-indigo-500 to-violet-500",
-  },
-  {
-    id: "a2",
-    tag: "กองทุน",
-    tagColor: "bg-emerald-100 text-emerald-700",
-    title: "เปรียบเทียบกองทุน SSF vs RMF ปี 2026 เลือกแบบไหนดี?",
-    excerpt:
-      "ลดหย่อนภาษีได้สูงสุด พร้อม Flow การลงทุนที่เหมาะสมกับแต่ละช่วงวัย",
-    readTime: "6 นาที",
-    date: "7 มี.ค. 2026",
-    gradient: "from-emerald-500 to-teal-500",
-  },
-  {
-    id: "a3",
-    tag: "US Market",
-    tagColor: "bg-red-100 text-red-700",
-    title: "Fed Rate Decision: ผลกระทบต่อตลาดหุ้นไทยและสหรัฐ",
-    excerpt: "วิเคราะห์ทิศทางดอกเบี้ย Fed และผลต่อการลงทุนในหุ้นและพันธบัตร",
-    readTime: "10 นาที",
-    date: "5 มี.ค. 2026",
-    gradient: "from-orange-500 to-red-500",
-  },
-];
+import { getIndexNavAlias } from "@/src/data/indexAliases";
+import { SET_REGION } from "@/src/data/indices";
+import { LEARN_TOPICS, MOCK_ARTICLES } from "@/src/data/landingContent";
+import { getSourceBadgeClass } from "@/src/data/newsConfig";
 
 const NEWS_PREVIEW = 8;
 
@@ -217,6 +126,7 @@ function FearGreedCard({ trendingStocks }: { trendingStocks: TrendingStockItem[]
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 export default function HomePage() {
+  const router = useRouter();
   const { isAuthenticated, user } = useAppSelector((s) => s.auth);
   const {
     indices,
@@ -232,6 +142,14 @@ export default function HomePage() {
   const [indicesTab, setIndicesTab] = useState<
     "all" | "asia" | "us" | "europe"
   >("all");
+
+  function goToStock(symbol: string) {
+    router.push(`/stocks/${encodeURIComponent(symbol.toUpperCase())}`);
+  }
+  function goToIndex(name: string) {
+    const alias = getIndexNavAlias(name);
+    if (alias) router.push(`/stocks/${alias}`);
+  }
 
   const previewNews = news.slice(0, NEWS_PREVIEW);
 
@@ -442,7 +360,7 @@ export default function HomePage() {
                             <span
                               className={cn(
                                 "text-[10px] font-semibold px-2 py-0.5 rounded",
-                                sourceBadge(item.source),
+                                getSourceBadgeClass(item.source),
                               )}
                             >
                               {item.source}
@@ -550,7 +468,8 @@ export default function HomePage() {
                         {filteredRows.map((row) => (
                           <div
                             key={row.name}
-                            className="grid grid-cols-[1fr_auto_auto_auto] md:grid-cols-[28px_1fr_100px_100px_90px] gap-x-3 px-5 py-2.5 items-center hover:bg-slate-50/60 transition-colors"
+                            onClick={() => goToIndex(row.name)}
+                            className="grid grid-cols-[1fr_auto_auto_auto] md:grid-cols-[28px_1fr_100px_100px_90px] gap-x-3 px-5 py-2.5 items-center hover:bg-slate-50/60 transition-colors cursor-pointer group"
                           >
                             {/* Flag */}
                             <span className="text-base leading-none hidden md:block">
@@ -559,7 +478,7 @@ export default function HomePage() {
 
                             {/* Name + region */}
                             <div>
-                              <p className="text-sm font-semibold text-slate-800">
+                              <p className="text-sm font-semibold text-slate-800 group-hover:text-indigo-600 transition-colors">
                                 {row.name}
                               </p>
                               <p className="text-[10px] text-slate-400">
@@ -681,7 +600,8 @@ export default function HomePage() {
                         : trendingStocks.map((stock, i) => (
                             <div
                               key={stock.symbol}
-                              className="grid grid-cols-[20px_1fr_90px_90px_90px] gap-x-3 px-5 py-2.5 items-center hover:bg-slate-50/60 transition-colors group"
+                              onClick={() => goToStock(stock.symbol)}
+                              className="grid grid-cols-[20px_1fr_90px_90px_90px] gap-x-3 px-5 py-2.5 items-center hover:bg-slate-50/60 transition-colors group cursor-pointer"
                             >
                               <span className="text-xs text-slate-300 tabular-nums">
                                 {i + 1}
@@ -745,7 +665,8 @@ export default function HomePage() {
                       : trendingStocks.map((stock) => (
                           <div
                             key={stock.symbol}
-                            className="shrink-0 flex flex-col rounded-xl border border-slate-200 bg-white px-3.5 py-3 w-[148px]"
+                            onClick={() => goToStock(stock.symbol)}
+                            className="shrink-0 flex flex-col rounded-xl border border-slate-200 bg-white px-3.5 py-3 w-[148px] cursor-pointer hover:border-indigo-200 hover:shadow-sm transition-all"
                           >
                             <div className="flex justify-between mb-0.5">
                               <span className="text-sm font-bold text-slate-800">
