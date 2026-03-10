@@ -1,324 +1,528 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState, useMemo } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { TrendingUp, ArrowRight, CheckCircle, ChevronRight, ArrowUpRight, ArrowDownRight, Star } from "lucide-react";
-import { getAuthSession } from "@/src/functions/authFunctions";
 import {
-  TICKER_STOCKS,
-  FEATURES,
-  PLATFORM_STATS,
-  HOW_IT_WORKS,
-  HERO_PREVIEW_STATS,
-  HERO_CHART_BARS,
-  HERO_PREVIEW_HOLDINGS,
-} from "@/src/data/landingContent";
+  BarChart2,
+  Newspaper,
+  ExternalLink,
+  LayoutDashboard,
+  Flame,
+  Globe,
+  Activity,
+  ArrowUpRight,
+  User,
+} from "lucide-react";
+import { useAppSelector } from "@/src/store/hooks";
+import { Navbar } from "@/components/layout/Navbar";
+import { Footer } from "@/components/layout/Footer";
+import { IndexBanner } from "@/components/ui/IndexBanner";
+import {
+  formatInteger,
+  formatVolume,
+  formatMarketCap,
+  timeAgo,
+} from "@/src/utils/formatters";
+import { getChangeColor, getChangeBgColor, cn } from "@/src/utils/helpers";
 
+// ── Types & constants ─────────────────────────────────────────────────────────
+type MarketTab = "active" | "gainers" | "losers";
+
+const SOURCE_CONFIG: Record<string, { bg: string; text: string }> = {
+  "MarketWatch":  { bg: "bg-emerald-100", text: "text-emerald-700" },
+  "CNBC":         { bg: "bg-red-100",     text: "text-red-700"     },
+  "Reuters":      { bg: "bg-orange-100",  text: "text-orange-700"  },
+  "Bangkok Post": { bg: "bg-blue-100",    text: "text-blue-700"    },
+};
+function sourceBadge(src: string) {
+  const cfg = SOURCE_CONFIG[src];
+  return cfg ? `${cfg.bg} ${cfg.text}` : "bg-slate-100 text-slate-600";
+}
+
+const NEWS_PREVIEW = 7;
+
+// ── Page ─────────────────────────────────────────────────────────────────────
 export default function HomePage() {
-  const router = useRouter();
-  const [scrolled, setScrolled] = useState(false);
+  const { isAuthenticated, user } = useAppSelector((s) => s.auth);
+  const {
+    indices,
+    globalIndices,
+    stocks,
+    trendingStocks,
+    news,
+    loading,
+    loadingGlobal,
+    loadingTrending,
+    loadingNews,
+  } = useAppSelector((s) => s.market);
 
-  useEffect(() => {
-    if (getAuthSession()) {
-      router.replace("/dashboard");
-      return;
-    }
-    const handleScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [router]);
+  const [marketTab, setMarketTab] = useState<MarketTab>("active");
 
-  const doubled = [...TICKER_STOCKS, ...TICKER_STOCKS];
+  // ── Computed market lists ─────────────────────────────────────────────────
+  const mostActive = useMemo(
+    () => [...stocks].sort((a, b) => b.volume * b.price - a.volume * a.price).slice(0, 10),
+    [stocks]
+  );
+  const topGainers = useMemo(
+    () => [...stocks].filter((s) => s.changePercent > 0).sort((a, b) => b.changePercent - a.changePercent).slice(0, 10),
+    [stocks]
+  );
+  const topLosers = useMemo(
+    () => [...stocks].filter((s) => s.changePercent < 0).sort((a, b) => a.changePercent - b.changePercent).slice(0, 10),
+    [stocks]
+  );
+
+  const activeStocks =
+    marketTab === "active"  ? mostActive  :
+    marketTab === "gainers" ? topGainers  :
+    topLosers;
+
+  const previewNews = news.slice(0, NEWS_PREVIEW);
+
+  // ── Tab style helper ──────────────────────────────────────────────────────
+  function tabClass(tab: MarketTab) {
+    const active = marketTab === tab;
+    if (!active) return "text-slate-500 hover:bg-slate-100 hover:text-slate-700";
+    if (tab === "gainers") return "bg-emerald-50 text-emerald-700 font-semibold";
+    if (tab === "losers")  return "bg-red-50 text-red-600 font-semibold";
+    return "bg-indigo-50 text-indigo-700 font-semibold";
+  }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white overflow-x-hidden">
-      {/* ─── Navbar ─────────────────────────────────────────────────────────── */}
-      <nav
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-          scrolled
-            ? "bg-slate-950/90 backdrop-blur-md"
-            : "bg-transparent"
-        }`}
-      >
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 md:px-8">
-          {/* Logo */}
-          <Link href="/home" className="flex items-center gap-2.5 group">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 group-hover:bg-indigo-500 transition-colors">
-              <TrendingUp size={16} className="text-white" />
+    <div className="min-h-screen bg-slate-50">
+
+      {/* ── Shared Navbar (auth-aware, all menu items) ─────────────────── */}
+      <Navbar />
+
+      {/* ── Body offset by fixed navbar h-14 = 56px ────────────────────── */}
+      <div className="pt-14">
+
+        {/* ── SET Status Bar ─────────────────────────────────────────── */}
+        <div className="bg-slate-900 text-white px-4 md:px-6 py-2.5">
+          <div className="mx-auto max-w-7xl flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex items-center gap-5 flex-wrap">
+              {loading && indices.length === 0 ? (
+                <div className="flex gap-4 animate-pulse">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="flex gap-2">
+                      <div className="h-4 w-12 rounded bg-slate-700" />
+                      <div className="h-4 w-16 rounded bg-slate-700" />
+                      <div className="h-5 w-14 rounded bg-slate-700" />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                indices.map((idx) => (
+                  <div key={idx.name} className="flex items-center gap-1.5">
+                    <span className="text-xs text-slate-400 font-medium">{idx.name}</span>
+                    <span className="text-sm font-bold tabular-nums">{formatInteger(idx.value)}</span>
+                    <span
+                      className={cn(
+                        "text-[10px] font-semibold px-1.5 py-0.5 rounded",
+                        idx.changePercent >= 0
+                          ? "bg-emerald-500/20 text-emerald-400"
+                          : "bg-red-500/20 text-red-400"
+                      )}
+                    >
+                      {idx.changePercent >= 0 ? "+" : ""}{idx.changePercent.toFixed(2)}%
+                    </span>
+                  </div>
+                ))
+              )}
             </div>
-            <span className="text-lg font-bold tracking-tight">InvestIQ</span>
-          </Link>
-
-          {/* Desktop Nav */}
-          <div className="hidden md:flex items-center gap-8">
-            {["Features", "How it Works", "Pricing"].map((item) => (
-              <a
-                key={item}
-                href={`#${item.toLowerCase().replace(/ /g, "-")}`}
-                className="text-sm text-slate-400 hover:text-white transition-colors"
-              >
-                {item}
-              </a>
-            ))}
-          </div>
-
-          {/* Auth Buttons */}
-          <div className="flex items-center gap-3">
-            <Link
-              href="/login"
-              className="hidden sm:block text-sm font-medium text-slate-300 hover:text-white transition-colors"
-            >
-              Log In
-            </Link>
-            <Link
-              href="/login"
-              className="flex items-center gap-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 px-4 py-2 text-sm font-semibold text-white transition-colors"
-            >
-              Get Started
-              <ChevronRight size={14} />
-            </Link>
+            <div className="flex items-center gap-1.5 text-[10px] text-slate-500">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse inline-block" />
+              Real-time · Yahoo Finance
+            </div>
           </div>
         </div>
-      </nav>
 
-      {/* ─── Hero ───────────────────────────────────────────────────────────── */}
-      <section className="relative min-h-screen flex items-center justify-center overflow-hidden px-4">
-        {/* Background gradient */}
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-indigo-950/30 to-slate-950" />
-        <div className="absolute top-1/4 left-1/3 h-96 w-96 rounded-full bg-indigo-600/10 blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 h-72 w-72 rounded-full bg-purple-600/10 blur-3xl" />
-
-        <div className="relative mx-auto max-w-5xl text-center pt-20">
-          {/* Badge */}
-          <div className="animate-fade-up inline-flex items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-4 py-1.5 text-sm text-indigo-300 mb-8">
-            <Star size={12} className="fill-indigo-400 text-indigo-400" />
-            Thailand&apos;s #1 Investment Platform
+        {/* ── Global Index Strip ─────────────────────────────────────── */}
+        <div className="bg-white border-b border-slate-200 py-2.5 px-4 md:px-6" id="markets">
+          <div className="mx-auto max-w-7xl">
+            <IndexBanner
+              indices={[]}
+              globalIndices={globalIndices}
+              loading={false}
+              loadingGlobal={loadingGlobal}
+            />
           </div>
+        </div>
 
-          {/* Headline */}
-          <h1 className="animate-fade-up animate-fade-up-delay-1 text-4xl md:text-6xl lg:text-7xl font-black leading-tight tracking-tight mb-6">
-            Invest Smarter,
-            <br />
-            <span className="animate-gradient bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-              Not Harder.
-            </span>
-          </h1>
+        {/* ════════════════════════════════════════════════════════════════
+            MAIN CONTENT
+        ════════════════════════════════════════════════════════════════ */}
+        <div className="mx-auto max-w-7xl px-4 md:px-6 py-5">
+          <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
 
-          {/* Subtext */}
-          <p className="animate-fade-up animate-fade-up-delay-2 mx-auto max-w-2xl text-lg md:text-xl text-slate-400 leading-relaxed mb-10">
-            InvestIQ gives you real-time SET market data, intelligent portfolio analytics,
-            and automated price alerts — everything you need to grow your wealth with confidence.
-          </p>
+            {/* ── LEFT / CENTER (2/3) ──────────────────────────────── */}
+            <div className="xl:col-span-2 space-y-5">
 
-          {/* CTA Buttons */}
-          <div className="animate-fade-up animate-fade-up-delay-3 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link
-              href="/login"
-              className="group flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 px-8 py-3.5 text-base font-semibold text-white transition-all shadow-lg shadow-indigo-600/25 hover:shadow-indigo-600/40 hover:-translate-y-0.5"
-            >
-              Start Investing Free
-              <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-            </Link>
-            <a
-              href="#features"
-              className="flex items-center gap-2 rounded-xl border border-white/10 hover:border-white/20 bg-white/5 hover:bg-white/10 px-8 py-3.5 text-base font-semibold text-white transition-all"
-            >
-              Explore Features
-            </a>
-          </div>
-
-          {/* Trust badges */}
-          <div className="mt-10 flex flex-wrap items-center justify-center gap-6 text-xs text-slate-500">
-            {["No credit card required", "Free forever plan", "SEC compliant"].map((t) => (
-              <span key={t} className="flex items-center gap-1.5">
-                <CheckCircle size={12} className="text-emerald-500" />
-                {t}
-              </span>
-            ))}
-          </div>
-
-          {/* Dashboard Preview */}
-          <div className="animate-float my-16 mx-auto max-w-3xl rounded-2xl border border-white/10 bg-slate-900/80 backdrop-blur-sm shadow-2xl shadow-indigo-900/20 overflow-hidden">
-            {/* Fake browser chrome */}
-            <div className="flex items-center gap-2 px-4 py-3 border-b border-white/10 bg-slate-900">
-              <div className="h-2.5 w-2.5 rounded-full bg-red-500/70" />
-              <div className="h-2.5 w-2.5 rounded-full bg-amber-500/70" />
-              <div className="h-2.5 w-2.5 rounded-full bg-emerald-500/70" />
-              <div className="ml-3 flex-1 rounded-md bg-slate-800 h-5 max-w-48 mx-auto" />
-            </div>
-            {/* Fake dashboard content */}
-            <div className="p-4 md:p-6 space-y-4">
-              {/* Stats row */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {HERO_PREVIEW_STATS.map((s) => (
-                  <div key={s.label} className="rounded-lg bg-slate-800/60 p-3">
-                    <p className="text-[10px] text-slate-500 uppercase tracking-wide mb-1">{s.label}</p>
-                    <p className={`text-sm font-bold ${s.color}`}>{s.value}</p>
+              {/* SET Market Overview */}
+              <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                <div className="flex items-center justify-between px-5 pt-4 pb-2 border-b border-slate-100 flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <BarChart2 size={15} className="text-indigo-500" />
+                    <h2 className="text-sm font-semibold text-slate-800">SET Market</h2>
+                    {loading && stocks.length === 0 && (
+                      <span className="text-[10px] text-slate-400 animate-pulse">กำลังโหลด...</span>
+                    )}
                   </div>
-                ))}
+
+                  {/* Tab toggle */}
+                  <div className="flex rounded-lg border border-slate-200 overflow-hidden text-xs">
+                    {(["active", "gainers", "losers"] as const).map((tab, idx) => (
+                      <button
+                        key={tab}
+                        onClick={() => setMarketTab(tab)}
+                        className={cn(
+                          "px-3 py-1.5 transition-colors",
+                          idx > 0 && "border-l border-slate-200",
+                          tabClass(tab)
+                        )}
+                      >
+                        {tab === "active"  ? "Most Active" :
+                         tab === "gainers" ? "▲ Gainers"   : "▼ Losers"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Skeleton */}
+                {loading && stocks.length === 0 ? (
+                  <div className="divide-y divide-slate-50">
+                    {Array.from({ length: 8 }).map((_, i) => (
+                      <div key={i} className="flex items-center px-5 py-3 gap-3 animate-pulse">
+                        <div className="h-3 w-4 rounded bg-slate-100 shrink-0" />
+                        <div className="h-4 w-14 rounded bg-slate-200" />
+                        <div className="flex-1 h-3 rounded bg-slate-100" />
+                        <div className="h-4 w-16 rounded bg-slate-200" />
+                        <div className="h-5 w-16 rounded bg-slate-100" />
+                        <div className="h-3 w-14 rounded bg-slate-100 hidden md:block" />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <>
+                    {/* Column headers */}
+                    <div className="grid grid-cols-[20px_1fr_auto_auto] md:grid-cols-[20px_1fr_80px_90px_80px_80px] gap-x-3 px-5 py-2 text-[10px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-50 bg-slate-50/50">
+                      <span>#</span>
+                      <span>Symbol</span>
+                      <span className="text-right hidden md:block">Price (฿)</span>
+                      <span className="text-right">%Change</span>
+                      <span className="text-right hidden md:block">Volume</span>
+                      <span className="text-right hidden md:block">Mkt Cap</span>
+                    </div>
+
+                    {/* Rows */}
+                    <div className="divide-y divide-slate-50">
+                      {activeStocks.map((stock, i) => (
+                        <div
+                          key={stock.symbol}
+                          className="grid grid-cols-[20px_1fr_auto_auto] md:grid-cols-[20px_1fr_80px_90px_80px_80px] gap-x-3 px-5 py-2.5 items-center hover:bg-slate-50/60 transition-colors group"
+                        >
+                          <span className="text-xs text-slate-300 tabular-nums font-medium">{i + 1}</span>
+
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <p className="text-sm font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">{stock.symbol}</p>
+                              <span className="text-[10px] text-slate-400 truncate hidden sm:block max-w-[100px]">{stock.name}</span>
+                            </div>
+                            <p className="text-[10px] text-slate-400 sm:hidden truncate">{stock.name}</p>
+                          </div>
+
+                          <span className="text-sm font-semibold text-slate-700 text-right hidden md:block tabular-nums">
+                            {stock.price.toFixed(2)}
+                          </span>
+
+                          <div className="flex flex-col items-end gap-0.5">
+                            <span className={cn(
+                              "text-xs font-bold px-1.5 py-0.5 rounded tabular-nums",
+                              stock.changePercent >= 0
+                                ? "bg-emerald-50 text-emerald-700"
+                                : "bg-red-50 text-red-600"
+                            )}>
+                              {stock.changePercent >= 0 ? "+" : ""}{stock.changePercent.toFixed(2)}%
+                            </span>
+                            <span className={cn("text-[10px] tabular-nums", getChangeColor(stock.change))}>
+                              {stock.change >= 0 ? "+" : ""}{stock.change.toFixed(2)}
+                            </span>
+                          </div>
+
+                          <span className="text-xs text-slate-500 text-right hidden md:block tabular-nums">
+                            {formatVolume(stock.volume)}
+                          </span>
+                          <span className="text-xs text-slate-500 text-right hidden md:block tabular-nums">
+                            {formatMarketCap(stock.marketCap)}
+                          </span>
+                        </div>
+                      ))}
+
+                      {activeStocks.length === 0 && (
+                        <p className="py-10 text-center text-sm text-slate-400">No data available</p>
+                      )}
+                    </div>
+
+                    {/* Footer */}
+                    <div className="px-5 py-3 border-t border-slate-100 flex items-center justify-between bg-slate-50/30">
+                      <span className="text-[10px] text-slate-400">{stocks.length} หลักทรัพย์</span>
+                      <Link
+                        href={isAuthenticated ? "/market" : "/login"}
+                        className="text-xs font-medium text-indigo-600 hover:text-indigo-700 flex items-center gap-0.5 transition-colors"
+                      >
+                        ดูทั้งหมด <ArrowUpRight size={12} />
+                      </Link>
+                    </div>
+                  </>
+                )}
               </div>
-              {/* Chart placeholder */}
-              <div className="rounded-lg bg-slate-800/60 p-4 h-28 flex items-end gap-1">
-                {HERO_CHART_BARS.map((h, i) => (
+
+              {/* Today's Hot Stocks (US) */}
+              <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm" id="hot">
+                <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100">
+                  <div className="flex items-center gap-2">
+                    <Flame size={14} className="text-orange-500" />
+                    <h2 className="text-sm font-semibold text-slate-800">Today&apos;s Hot Stocks</h2>
+                    <span className="text-[10px] font-medium text-white bg-slate-400 px-2 py-0.5 rounded-full hidden sm:inline">
+                      US Markets
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-slate-400 hidden sm:block">Biggest movers · every 2 min</span>
+                </div>
+
+                <div className="flex gap-3 overflow-x-auto px-5 py-4 scrollbar-hide">
+                  {loadingTrending && trendingStocks.length === 0
+                    ? Array.from({ length: 8 }).map((_, i) => (
+                        <div key={i} className="shrink-0 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 w-[140px] animate-pulse space-y-2">
+                          <div className="flex justify-between">
+                            <div className="h-3.5 w-10 rounded bg-slate-200" />
+                            <div className="h-4 w-14 rounded bg-slate-200" />
+                          </div>
+                          <div className="h-3 w-16 rounded bg-slate-100" />
+                          <div className="h-5 w-14 rounded bg-slate-200 mt-2" />
+                          <div className="h-3 w-12 rounded bg-slate-100" />
+                        </div>
+                      ))
+                    : trendingStocks.map((stock) => (
+                        <div
+                          key={stock.symbol}
+                          className="shrink-0 flex flex-col rounded-xl border border-slate-200 bg-white px-3.5 py-3 w-[152px] hover:shadow-md hover:border-indigo-200 transition-all"
+                        >
+                          <div className="flex items-center justify-between mb-0.5">
+                            <span className="text-sm font-bold text-slate-800">{stock.symbol}</span>
+                            <span className={cn(
+                              "text-[9px] font-bold px-1.5 py-0.5 rounded-full",
+                              stock.changePercent >= 0
+                                ? "bg-emerald-50 text-emerald-700"
+                                : "bg-red-50 text-red-600"
+                            )}>
+                              {stock.changePercent >= 0 ? "▲" : "▼"}{Math.abs(stock.changePercent).toFixed(2)}%
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-slate-400 truncate mb-2.5">{stock.name}</p>
+                          <p className="text-base font-bold text-slate-900 tabular-nums leading-none">
+                            ${stock.price.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </p>
+                          <p className={cn("text-xs font-semibold mt-1 tabular-nums", getChangeColor(stock.changePercent))}>
+                            {stock.change >= 0 ? "+" : ""}${Math.abs(stock.change).toFixed(2)}
+                          </p>
+                        </div>
+                      ))}
+                </div>
+              </div>
+
+              {/* Compact promo strip */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {[
+                  { gradient: "from-indigo-600 to-violet-600", badge: "InvestIQ Pro",    title: "AI Portfolio Analysis · 30 วันฟรี",          cta: "ลองเลย →"    },
+                  { gradient: "from-emerald-500 to-teal-600",  badge: "0% Commission",   title: "ซื้อขายหุ้น US ไม่มีค่าธรรมเนียม",           cta: "เปิดบัญชี →" },
+                ].map((ad) => (
                   <div
-                    key={i}
-                    className="flex-1 rounded-sm bg-gradient-to-t from-indigo-600/80 to-indigo-400/30"
-                    style={{ height: `${h}%` }}
-                  />
-                ))}
-              </div>
-              {/* Holdings row */}
-              <div className="grid grid-cols-3 gap-2">
-                {HERO_PREVIEW_HOLDINGS.map((h) => (
-                  <div key={h.symbol} className="rounded-lg bg-slate-800/60 px-3 py-2 flex items-center justify-between">
-                    <span className="text-xs font-semibold text-white">{h.symbol}</span>
-                    <span className="text-[10px] text-emerald-400">{h.return}</span>
+                    key={ad.badge}
+                    className={cn("rounded-xl bg-linear-to-r p-4 flex items-center justify-between gap-3", ad.gradient)}
+                  >
+                    <div>
+                      <span className="text-[10px] font-bold text-white/70 uppercase tracking-wide">{ad.badge}</span>
+                      <p className="text-sm font-bold text-white mt-0.5">{ad.title}</p>
+                    </div>
+                    <Link
+                      href="/login"
+                      className="shrink-0 px-3 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xs font-bold transition-colors whitespace-nowrap"
+                    >
+                      {ad.cta}
+                    </Link>
                   </div>
                 ))}
               </div>
             </div>
+
+            {/* ── RIGHT SIDEBAR (1/3) ──────────────────────────────── */}
+            <div className="space-y-5">
+
+              {/* Global Markets */}
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div className="flex items-center gap-2 px-5 py-3.5 border-b border-slate-100">
+                  <Globe size={14} className="text-slate-500" />
+                  <h3 className="text-sm font-semibold text-slate-800">Global Markets</h3>
+                </div>
+                {globalIndices.length === 0 ? (
+                  <div className="px-5 py-4 space-y-3 animate-pulse">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <div key={i} className="flex justify-between items-center">
+                        <div className="h-3.5 w-20 rounded bg-slate-200" />
+                        <div className="flex gap-2">
+                          <div className="h-3.5 w-16 rounded bg-slate-200" />
+                          <div className="h-5 w-14 rounded bg-slate-100" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="divide-y divide-slate-50">
+                    {globalIndices.map((idx) => (
+                      <div key={idx.name} className="flex items-center justify-between px-5 py-3 hover:bg-slate-50 transition-colors">
+                        <div className="flex items-center gap-2">
+                          <Activity size={11} className="text-slate-400 shrink-0" />
+                          <span className="text-sm text-slate-700 font-medium">{idx.name}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-bold text-slate-800 tabular-nums">
+                            {idx.value > 1000 ? formatInteger(idx.value) : idx.value.toFixed(2)}
+                          </span>
+                          <span className={cn("text-xs font-bold px-1.5 py-0.5 rounded tabular-nums", getChangeBgColor(idx.changePercent))}>
+                            {idx.changePercent >= 0 ? "+" : ""}{idx.changePercent.toFixed(2)}%
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Financial News */}
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden" id="news">
+                <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100">
+                  <div className="flex items-center gap-2">
+                    <Newspaper size={14} className="text-slate-500" />
+                    <h3 className="text-sm font-semibold text-slate-800">Financial News</h3>
+                  </div>
+                  {loadingNews && news.length === 0 && (
+                    <span className="text-[10px] text-slate-400 animate-pulse">กำลังโหลด...</span>
+                  )}
+                </div>
+
+                {loadingNews && news.length === 0 ? (
+                  <div className="divide-y divide-slate-100">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <div key={i} className="px-5 py-3 animate-pulse space-y-1.5">
+                        <div className="h-3 w-16 rounded bg-slate-200" />
+                        <div className="h-3.5 w-full rounded bg-slate-200" />
+                        <div className="h-3.5 w-4/5 rounded bg-slate-100" />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="divide-y divide-slate-100">
+                    {previewNews.map((item) => (
+                      <a
+                        key={item.id}
+                        href={item.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group flex gap-3 px-5 py-3 hover:bg-slate-50 transition-colors"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                            <span className={cn("text-[10px] font-semibold px-1.5 py-0.5 rounded", sourceBadge(item.source))}>
+                              {item.source}
+                            </span>
+                            <span className="text-[10px] text-slate-400">{timeAgo(item.publishedAt)}</span>
+                          </div>
+                          <p className="text-xs font-medium text-slate-700 line-clamp-2 group-hover:text-indigo-700 transition-colors leading-relaxed">
+                            {item.title}
+                          </p>
+                        </div>
+                        <ExternalLink size={11} className="shrink-0 text-slate-300 group-hover:text-indigo-400 transition-colors mt-1" />
+                      </a>
+                    ))}
+                  </div>
+                )}
+
+                {!loadingNews && news.length === 0 && (
+                  <p className="py-10 text-center text-sm text-slate-400">ไม่สามารถโหลดข่าวได้</p>
+                )}
+
+                <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/30">
+                  <Link
+                    href={isAuthenticated ? "/news" : "/login"}
+                    className="flex items-center justify-center gap-1 w-full text-xs font-medium text-indigo-600 hover:text-indigo-700 py-0.5 transition-colors"
+                  >
+                    ดูข่าวทั้งหมด <ArrowUpRight size={12} />
+                  </Link>
+                </div>
+              </div>
+
+              {/* Auth CTA card */}
+              {!isAuthenticated ? (
+                <div className="rounded-2xl bg-linear-to-br from-indigo-600 to-violet-600 p-5 text-white shadow-sm">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-lg">📈</span>
+                    <h3 className="font-bold text-sm">เริ่มต้นลงทุนกับ InvestIQ</h3>
+                  </div>
+                  <p className="text-xs text-indigo-100 leading-relaxed mb-4">
+                    ติดตามพอร์ตแบบ Real-time, ดู P&amp;L และรับ Smart Price Alerts ฟรี
+                  </p>
+                  <Link
+                    href="/login"
+                    className="flex items-center justify-center gap-1.5 w-full rounded-lg bg-white text-indigo-700 font-bold text-sm py-2.5 hover:bg-indigo-50 transition-colors"
+                  >
+                    สมัครใช้งานฟรี →
+                  </Link>
+                  <p className="text-center text-[10px] text-indigo-200 mt-2">
+                    demo@investiq.com / demo1234
+                  </p>
+                </div>
+              ) : (
+                <div className="rounded-2xl bg-linear-to-br from-slate-800 to-slate-900 p-5 text-white shadow-sm">
+                  <h3 className="font-bold text-sm mb-1">
+                    สวัสดี, {user?.name?.split(" ")[0] ?? "Investor"} 👋
+                  </h3>
+                  <p className="text-xs text-slate-400 mb-4">
+                    ดูพอร์ตและผลตอบแทนล่าสุดของคุณ
+                  </p>
+                  <Link
+                    href="/dashboard"
+                    className="flex items-center justify-center gap-1.5 w-full rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm py-2.5 transition-colors"
+                  >
+                    <LayoutDashboard size={13} />
+                    View My Dashboard
+                  </Link>
+                </div>
+              )}
+
+              {/* Quick stats (guest only) */}
+              {!isAuthenticated && (
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { label: "สมาชิก",    value: "12,000+", icon: User      },
+                    { label: "Uptime",     value: "99.9%",   icon: Activity  },
+                    { label: "หุ้น SET",  value: "500+",    icon: BarChart2 },
+                    { label: "US Stocks", value: "7,000+",  icon: Globe     },
+                  ].map(({ label, value, icon: Icon }) => (
+                    <div key={label} className="bg-white rounded-xl border border-slate-200 p-3 text-center shadow-sm">
+                      <Icon size={14} className="text-indigo-500 mx-auto mb-1" />
+                      <p className="text-base font-black text-slate-800">{value}</p>
+                      <p className="text-[10px] text-slate-400">{label}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      </section>
 
-      {/* ─── Ticker ──────────────────────────────────────────────────────────── */}
-      <div className="border-y border-white/5 bg-slate-900/50 py-3 overflow-hidden">
-        <div className="flex animate-ticker whitespace-nowrap">
-          {doubled.map((stock, i) => (
-            <div
-              key={i}
-              className="inline-flex items-center gap-2 px-6 border-r border-white/5 last:border-0"
-            >
-              <span className="text-xs font-semibold text-white">{stock.symbol}</span>
-              <span className="text-xs text-slate-300">฿{stock.price.toFixed(2)}</span>
-              <span
-                className={`flex items-center gap-0.5 text-[10px] font-semibold ${
-                  stock.up ? "text-emerald-400" : "text-red-400"
-                }`}
-              >
-                {stock.up ? <ArrowUpRight size={10} /> : <ArrowDownRight size={10} />}
-                {Math.abs(stock.change).toFixed(2)}%
-              </span>
-            </div>
-          ))}
-        </div>
+        <Footer />
       </div>
-
-      {/* ─── Features ───────────────────────────────────────────────────────── */}
-      <section id="features" className="py-24 px-4">
-        <div className="mx-auto max-w-7xl">
-          <div className="text-center mb-16">
-            <p className="text-indigo-400 text-sm font-semibold uppercase tracking-widest mb-3">Features</p>
-            <h2 className="text-3xl md:text-5xl font-bold text-white mb-4">
-              Everything you need to invest{" "}
-              <span className="text-indigo-400">confidently</span>
-            </h2>
-            <p className="mx-auto max-w-xl text-slate-400 text-lg">
-              Professional-grade tools designed for Thai retail investors.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {FEATURES.map(({ icon: Icon, title, description, iconColor, iconBg }) => (
-              <div
-                key={title}
-                className="group rounded-2xl border border-white/5 bg-slate-900/60 p-6 hover:border-indigo-500/30 hover:bg-slate-800/60 transition-all duration-300"
-              >
-                <div className={`inline-flex h-11 w-11 items-center justify-center rounded-xl ${iconBg} mb-4`}>
-                  <Icon size={22} className={iconColor} />
-                </div>
-                <h3 className="text-base font-semibold text-white mb-2">{title}</h3>
-                <p className="text-sm text-slate-400 leading-relaxed">{description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ─── Stats ──────────────────────────────────────────────────────────── */}
-      <section className="py-20 px-4 bg-gradient-to-r from-indigo-600/10 via-purple-600/10 to-indigo-600/10 border-y border-white/5">
-        <div className="mx-auto max-w-5xl grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-          {PLATFORM_STATS.map(({ value, label }) => (
-            <div key={label}>
-              <p className="text-3xl md:text-4xl font-black text-white mb-1">{value}</p>
-              <p className="text-sm text-slate-400">{label}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ─── How it Works ───────────────────────────────────────────────────── */}
-      <section id="how-it-works" className="py-24 px-4">
-        <div className="mx-auto max-w-5xl">
-          <div className="text-center mb-16">
-            <p className="text-indigo-400 text-sm font-semibold uppercase tracking-widest mb-3">How it Works</p>
-            <h2 className="text-3xl md:text-5xl font-bold text-white mb-4">
-              Up and running in{" "}
-              <span className="text-indigo-400">3 minutes</span>
-            </h2>
-          </div>
-          <div className="relative grid grid-cols-1 md:grid-cols-3 gap-8">
-            {/* Connector line */}
-            <div className="hidden md:block absolute top-10 left-1/3 right-1/3 h-px bg-gradient-to-r from-indigo-600/0 via-indigo-600/50 to-indigo-600/0 -z-10" />
-            {HOW_IT_WORKS.map(({ step, title, description }) => (
-              <div key={step} className="relative text-center">
-                <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-600/20 border border-indigo-500/30 text-2xl font-black text-indigo-400 mb-5">
-                  {step}
-                </div>
-                <h3 className="text-lg font-semibold text-white mb-2">{title}</h3>
-                <p className="text-sm text-slate-400 leading-relaxed">{description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ─── Final CTA ──────────────────────────────────────────────────────── */}
-      <section className="py-24 px-4">
-        <div className="mx-auto max-w-3xl text-center">
-          <div className="rounded-3xl border border-indigo-500/20 bg-gradient-to-br from-indigo-600/15 via-purple-600/10 to-slate-900 p-12 md:p-16">
-            <h2 className="text-3xl md:text-5xl font-black text-white mb-4">
-              Ready to invest smarter?
-            </h2>
-            <p className="text-slate-400 text-lg mb-8 max-w-lg mx-auto">
-              Join thousands of investors already growing their wealth with InvestIQ.
-              Start free, upgrade anytime.
-            </p>
-            <Link
-              href="/login"
-              className="group inline-flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 px-10 py-4 text-base font-bold text-white transition-all shadow-lg shadow-indigo-600/30 hover:shadow-indigo-600/50 hover:-translate-y-0.5"
-            >
-              Get Started Free
-              <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-            </Link>
-            <p className="mt-4 text-xs text-slate-500">
-              Use demo@investiq.com / demo1234 to explore
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* ─── Footer ─────────────────────────────────────────────────────────── */}
-      <footer className="border-t border-white/5 py-8 px-4">
-        <div className="mx-auto max-w-7xl flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-600">
-              <TrendingUp size={13} className="text-white" />
-            </div>
-            <span className="text-sm font-bold">InvestIQ</span>
-          </div>
-          <p className="text-xs text-slate-500 text-center">
-            © 2026 InvestIQ. Built for educational &amp; demonstration purposes. Not financial advice.
-          </p>
-          <div className="flex items-center gap-6 text-xs text-slate-500">
-            {["Privacy", "Terms", "Contact"].map((link) => (
-              <a key={link} href="#" className="hover:text-slate-300 transition-colors">
-                {link}
-              </a>
-            ))}
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

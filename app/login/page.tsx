@@ -41,13 +41,13 @@ export default function LoginPage() {
   // Redirect if already authenticated
   useEffect(() => {
     if (getAuthSession()) {
-      router.replace("/dashboard");
+      router.replace("/home");
     }
   }, [router]);
 
   useEffect(() => {
     if (isAuthenticated) {
-      router.replace("/dashboard");
+      router.replace("/home");
     }
   }, [isAuthenticated, router]);
 

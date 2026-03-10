@@ -1,6 +1,6 @@
+import React from "react";
 import { AuthGuard } from "@/components/providers/AuthGuard";
-import { MainLayout } from "@/components/layout/MainLayout";
-import { MarketProvider } from "@/components/providers/MarketProvider";
+import { PageLayout } from "@/components/layout/PageLayout";
 
 export default function AppLayout({
   children,
@@ -9,9 +9,7 @@ export default function AppLayout({
 }) {
   return (
     <AuthGuard>
-      <MarketProvider>
-        <MainLayout>{children}</MainLayout>
-      </MarketProvider>
+      <PageLayout>{children}</PageLayout>
     </AuthGuard>
   );
 }
