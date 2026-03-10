@@ -38,6 +38,17 @@ export const PROFILE_NAV_ITEMS: NavItem[] = [
   { href: "/settings",     label: "Settings",     icon: Settings       },
 ];
 
+// ── Legacy aliases (kept for backward compatibility) ─────────────────────────
+export const BOTTOM_NAV_ITEMS: NavItem[] = [
+  { href: "/home",         label: "Home",         icon: Home          },
+  { href: "/market",       label: "Market",       icon: BarChart2     },
+  { href: "/news",         label: "News",         icon: Newspaper     },
+  { href: "/dashboard",    label: "Portfolio",    icon: PieChart      },
+  { href: "/settings",     label: "Settings",     icon: Settings      },
+];
+
+export const SETTINGS_NAV_ITEMS: NavItem[] = PROFILE_NAV_ITEMS;
+
 export const PAGE_TITLE_MAP: Record<string, string> = {
   "/home":         "Home",
   "/market":       "Market",

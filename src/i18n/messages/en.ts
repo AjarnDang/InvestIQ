@@ -1,4 +1,6 @@
-const en = {
+import type { Messages } from "./types";
+
+const en: Messages = {
   nav: {
     home:          "Home",
     market:        "Market",
@@ -58,7 +60,7 @@ const en = {
     high:            "High",
     low:             "Low",
     open:            "Open",
-    close:           "Close",
+    marketClose:     "Close",
   },
 
   home: {
@@ -249,7 +251,7 @@ const en = {
     copyright:       "© {{year}} InvestIQ. All rights reserved.",
     disclaimer:      "Investment data is for informational purposes only. Past performance does not guarantee future results.",
   },
-} as const;
+};
 
-export type Messages = typeof en;
+export type { Messages };
 export default en;

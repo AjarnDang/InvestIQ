@@ -1,4 +1,4 @@
-import type { Messages } from "./en";
+import type { Messages } from "./types";
 
 const th: Messages = {
   nav: {
@@ -60,7 +60,7 @@ const th: Messages = {
     high:            "สูงสุด",
     low:             "ต่ำสุด",
     open:            "เปิด",
-    close:           "ปิด",
+    marketClose:     "ปิด",
   },
 
   home: {
@@ -251,6 +251,6 @@ const th: Messages = {
     copyright:       "© {{year}} InvestIQ. สงวนลิขสิทธิ์",
     disclaimer:      "ข้อมูลการลงทุนมีไว้เพื่อเป็นข้อมูลเท่านั้น ผลการดำเนินงานในอดีตไม่ได้รับประกันผลลัพธ์ในอนาคต",
   },
-} as const;
+};
 
 export default th;
