@@ -6,10 +6,10 @@ import {
   ExternalLink,
   RefreshCw,
   Filter,
+  Clock,
 } from "lucide-react";
 import { useAppSelector, useAppDispatch } from "@/src/store/hooks";
 import { fetchMarketNews } from "@/src/slices/marketSlice";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { timeAgo } from "@/src/utils/formatters";
 import { cn } from "@/src/utils/helpers";
 
@@ -21,28 +21,39 @@ const SOURCE_CONFIG: Record<string, { bg: string; text: string }> = {
   "Reuters":      { bg: "bg-orange-100",  text: "text-orange-700"  },
   "Bangkok Post": { bg: "bg-blue-100",    text: "text-blue-700"    },
 };
+
 function sourceBadge(source: string) {
   const cfg = SOURCE_CONFIG[source];
   return cfg ? `${cfg.bg} ${cfg.text}` : "bg-slate-100 text-slate-600";
 }
 
+// Map source → accent colour for card top border
+const SOURCE_ACCENT: Record<string, string> = {
+  "MarketWatch":  "border-t-emerald-400",
+  "CNBC":         "border-t-red-400",
+  "Reuters":      "border-t-orange-400",
+  "Bangkok Post": "border-t-blue-400",
+};
+
 export default function NewsPage() {
-  const dispatch    = useAppDispatch();
+  const dispatch = useAppDispatch();
   const { news, loadingNews } = useAppSelector((s) => s.market);
   const [activeSource, setActiveSource] = useState("All");
 
-  const filtered = activeSource === "All"
-    ? news
-    : news.filter((n) => n.source === activeSource);
+  const filtered =
+    activeSource === "All"
+      ? news
+      : news.filter((n) => n.source === activeSource);
 
   return (
-    <div className="space-y-4 md:space-y-6">
-      {/* Header */}
+    <div className="space-y-5">
+
+      {/* ── Header ─────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-slate-800">Financial News</h1>
           <p className="text-sm text-slate-500 mt-0.5">
-            Latest news from global and Thai financial markets
+            ข่าวการเงินล่าสุดจากตลาดทั่วโลก
           </p>
         </div>
         <button
@@ -55,18 +66,18 @@ export default function NewsPage() {
         </button>
       </div>
 
-      {/* Source Filter */}
+      {/* ── Source Filter tabs ──────────────────────────────────────────── */}
       <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide pb-1">
-        <Filter size={13} className="text-slate-400 flex-shrink-0" />
+        <Filter size={13} className="text-slate-400 shrink-0" />
         {ALL_SOURCES.map((src) => (
           <button
             key={src}
             onClick={() => setActiveSource(src)}
             className={cn(
-              "flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
+              "shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
               activeSource === src
                 ? "bg-indigo-600 text-white"
-                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200",
             )}
           >
             {src}
@@ -77,93 +88,110 @@ export default function NewsPage() {
             )}
           </button>
         ))}
+        <span className="ml-auto shrink-0 text-xs text-slate-400">
+          {filtered.length} บทความ
+        </span>
       </div>
 
-      {/* News List */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Newspaper size={15} className="text-slate-500" />
-              <CardTitle>
-                {activeSource === "All" ? "All Sources" : activeSource}
-              </CardTitle>
+      {/* ── Loading skeletons ───────────────────────────────────────────── */}
+      {loadingNews && news.length === 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Array.from({ length: 9 }).map((_, i) => (
+            <div
+              key={i}
+              className="bg-white rounded-2xl border border-slate-200 p-4 animate-pulse space-y-3"
+            >
+              <div className="flex gap-2">
+                <div className="h-4 w-20 rounded bg-slate-200" />
+                <div className="h-4 w-16 rounded bg-slate-100" />
+              </div>
+              <div className="h-4 w-full rounded bg-slate-200" />
+              <div className="h-4 w-5/6 rounded bg-slate-200" />
+              <div className="h-3 w-3/4 rounded bg-slate-100" />
+              <div className="h-3 w-1/3 rounded bg-slate-100" />
             </div>
-            <span className="text-xs text-slate-400">{filtered.length} articles</span>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-0 px-0 pb-2">
-          {/* Loading skeletons */}
-          {loadingNews && news.length === 0 && (
-            <div className="divide-y divide-slate-100">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="px-5 py-4 animate-pulse space-y-2">
-                  <div className="flex gap-2">
-                    <div className="h-4 w-20 rounded bg-slate-200" />
-                    <div className="h-4 w-16 rounded bg-slate-100" />
-                  </div>
-                  <div className="h-4 w-full rounded bg-slate-200" />
-                  <div className="h-4 w-4/5 rounded bg-slate-200" />
-                  <div className="h-3 w-3/4 rounded bg-slate-100" />
-                </div>
-              ))}
-            </div>
-          )}
+          ))}
+        </div>
+      )}
 
-          {/* News items */}
-          {filtered.length > 0 && (
-            <div className="divide-y divide-slate-100">
-              {filtered.map((item) => (
-                <a
-                  key={item.id}
-                  href={item.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group flex gap-4 px-4 md:px-5 py-4 hover:bg-slate-50 transition-colors"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                      <span
-                        className={cn(
-                          "inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold",
-                          sourceBadge(item.source)
-                        )}
-                      >
-                        {item.source}
-                      </span>
-                      <span className="text-[10px] text-slate-400">
-                        {timeAgo(item.publishedAt)}
-                      </span>
-                    </div>
-                    <p className="text-sm font-semibold text-slate-800 line-clamp-2 group-hover:text-indigo-700 transition-colors leading-snug mb-1">
-                      {item.title}
-                    </p>
-                    {item.description && (
-                      <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
-                        {item.description}
-                      </p>
+      {/* ── Responsive grid ─────────────────────────────────────────────── */}
+      {!loadingNews && filtered.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filtered.map((item, i) => {
+            const accentBorder = SOURCE_ACCENT[item.source] ?? "border-t-slate-300";
+            const isFeatured = i === 0 && activeSource === "All";
+
+            return (
+              <a
+                key={item.id}
+                href={item.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cn(
+                  "group bg-white rounded-2xl border border-slate-200 border-t-2 p-4 flex flex-col gap-3",
+                  "hover:shadow-md hover:border-indigo-200 hover:border-t-indigo-400 transition-all",
+                  accentBorder,
+                  isFeatured && "sm:col-span-2 lg:col-span-1",
+                )}
+              >
+                {/* Source + time */}
+                <div className="flex items-center justify-between">
+                  <span
+                    className={cn(
+                      "text-[10px] font-semibold px-2 py-0.5 rounded",
+                      sourceBadge(item.source),
                     )}
-                  </div>
-                  <div className="flex-shrink-0 flex items-start pt-0.5">
-                    <ExternalLink
-                      size={13}
-                      className="text-slate-300 group-hover:text-indigo-500 transition-colors"
-                    />
-                  </div>
-                </a>
-              ))}
-            </div>
-          )}
+                  >
+                    {item.source}
+                  </span>
+                  <span className="text-[10px] text-slate-400 flex items-center gap-0.5">
+                    <Clock size={9} />
+                    {timeAgo(item.publishedAt)}
+                  </span>
+                </div>
 
-          {!loadingNews && filtered.length === 0 && (
-            <p className="py-16 text-center text-sm text-slate-400">
-              {news.length === 0
-                ? "Unable to load news. Check your connection."
-                : `No articles from ${activeSource}`}
-            </p>
-          )}
-        </CardContent>
-      </Card>
+                {/* Title */}
+                <p className="text-sm font-semibold text-slate-800 leading-snug line-clamp-3 group-hover:text-indigo-700 transition-colors flex-1">
+                  {item.title}
+                </p>
+
+                {/* Description (only when available) */}
+                {item.description && (
+                  <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
+                    {item.description}
+                  </p>
+                )}
+
+                {/* Footer */}
+                <div className="flex items-center justify-between pt-1 border-t border-slate-50">
+                  <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                    <Newspaper size={9} />
+                    {item.source}
+                  </span>
+                  <ExternalLink
+                    size={11}
+                    className="text-slate-300 group-hover:text-indigo-500 transition-colors"
+                  />
+                </div>
+              </a>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── Empty state ─────────────────────────────────────────────────── */}
+      {!loadingNews && filtered.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-24 gap-4">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100">
+            <Newspaper size={22} className="text-slate-400" />
+          </div>
+          <p className="text-sm text-slate-500 text-center">
+            {news.length === 0
+              ? "ไม่สามารถโหลดข่าวได้ กรุณาตรวจสอบการเชื่อมต่อ"
+              : `ไม่มีบทความจาก ${activeSource}`}
+          </p>
+        </div>
+      )}
     </div>
   );
 }

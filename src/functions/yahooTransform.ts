@@ -32,6 +32,7 @@ interface YahooChartMeta {
   chartPreviousClose?: number;
   regularMarketChange?: number;
   regularMarketChangePercent?: number;
+  gmtoffset?: number;
 }
 
 interface YahooChartResult {
@@ -147,9 +148,15 @@ export function transformChartToQuote(
 
 // ─── Transform: Chart → PriceHistory[] ───────────────────────────────────────
 
-export function transformChartToPriceHistory(raw: YahooChartResponse): PriceHistory[] {
+export function transformChartToPriceHistory(
+  raw: YahooChartResponse,
+  intraday = false,
+): PriceHistory[] {
   const result = raw?.chart?.result?.[0];
   if (!result) return [];
+
+  // gmtoffset is the exchange's UTC offset in seconds (e.g. 25200 for ICT UTC+7)
+  const gmtOffset = result.meta?.gmtoffset ?? 0;
 
   const timestamps = result.timestamp ?? [];
   const quote = result.indicators?.quote?.[0];
@@ -167,9 +174,22 @@ export function transformChartToPriceHistory(raw: YahooChartResponse): PriceHist
     // skip candles with missing OHLC data
     if (close == null || open == null || high == null || low == null) continue;
 
-    const date = new Date(timestamps[i] * 1000);
+    const ts = timestamps[i];
+    let dateStr: string;
+
+    if (intraday) {
+      // Shift to the exchange's local time and extract HH:MM
+      const localMs = (ts + gmtOffset) * 1000;
+      const d = new Date(localMs);
+      const hh = String(d.getUTCHours()).padStart(2, "0");
+      const mm = String(d.getUTCMinutes()).padStart(2, "0");
+      dateStr = `${hh}:${mm}`;
+    } else {
+      dateStr = new Date(ts * 1000).toISOString().split("T")[0];
+    }
+
     history.push({
-      date:   date.toISOString().split("T")[0],
+      date:   dateStr,
       open:   round2(open),
       high:   round2(high),
       low:    round2(low),

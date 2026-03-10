@@ -18,6 +18,7 @@ import {
   setAlertPrice,
   addItem,
 } from "@/src/slices/watchlistSlice";
+import { ProfileTabsBar } from "@/components/layout/ProfileTabsBar";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -67,6 +68,7 @@ export default function WatchlistPage() {
 
   return (
     <div className="space-y-4 md:space-y-6">
+      <ProfileTabsBar />
       {/* Summary bar */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">

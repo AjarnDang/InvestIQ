@@ -94,6 +94,13 @@ export function Navbar() {
     setMobileOpen(false);
   }
 
+  function goToStock(symbol: string) {
+    setSearchQuery("");
+    setSearchOpen(false);
+    setMobileOpen(false);
+    router.push(`/stocks/${symbol.toUpperCase()}`);
+  }
+
   function goToMarket() {
     setSearchQuery("");
     setSearchOpen(false);
@@ -176,7 +183,7 @@ export function Navbar() {
                     {searchResults.map((stock) => (
                       <button
                         key={stock.symbol}
-                        onClick={goToMarket}
+                        onClick={() => goToStock(stock.symbol)}
                         className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 transition-colors text-left"
                       >
                         <div className="flex-1 min-w-0">
@@ -479,7 +486,7 @@ export function Navbar() {
                     {searchResults.map((stock) => (
                       <button
                         key={stock.symbol}
-                        onClick={goToMarket}
+                        onClick={() => goToStock(stock.symbol)}
                         className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 text-left border-b border-slate-50 last:border-0 transition-colors"
                       >
                         <div className="flex-1 min-w-0">

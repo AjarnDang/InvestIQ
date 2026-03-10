@@ -10,6 +10,7 @@ import { StatCard } from "@/components/ui/StatCard";
 import type { Transaction, TransactionType, TransactionStatus } from "@/src/types";
 import { formatCurrency, formatDate } from "@/src/utils/formatters";
 import { TRANSACTION_TYPE_CONFIG, STATUS_CONFIG, cn } from "@/src/utils/helpers";
+import { ProfileTabsBar } from "@/components/layout/ProfileTabsBar";
 
 const TYPE_OPTIONS: Array<{ value: TransactionType | "ALL"; label: string }> = [
   { value: "ALL", label: "All Types" },
@@ -61,6 +62,7 @@ export default function TransactionsPage() {
 
   return (
     <div className="space-y-4 md:space-y-6">
+      <ProfileTabsBar />
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
         <StatCard

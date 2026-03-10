@@ -81,6 +81,7 @@ export function Header({ pathname }: HeaderProps) {
             className="flex-1 bg-transparent text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none"
           />
           <button
+            aria-label="Close search"
             onClick={() => setShowMobileSearch(false)}
             className="text-slate-500 hover:text-slate-700"
           >

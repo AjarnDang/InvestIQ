@@ -23,6 +23,7 @@ import {
   formatPercent,
 } from "@/src/utils/formatters";
 import { getChangeColor, cn } from "@/src/utils/helpers";
+import { ProfileTabsBar } from "@/components/layout/ProfileTabsBar";
 
 // ── Holdings table columns ────────────────────────────────────────────────────
 const columns: TableColumn<Holding & Record<string, unknown>>[] = [
@@ -120,6 +121,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-4 md:space-y-6">
+      <ProfileTabsBar />
 
       {/* ── Portfolio Summary Stats ──────────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
