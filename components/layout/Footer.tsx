@@ -3,12 +3,12 @@ import Link from "next/link";
 import { TrendingUp } from "lucide-react";
 
 const NAV_LINKS = [
-  { label: "Home",         href: "/home"         },
-  { label: "Market",       href: "/market"       },
-  { label: "Dashboard",    href: "/dashboard"    },
-  { label: "Transactions", href: "/transactions" },
-  { label: "Watchlist",    href: "/watchlist"    },
-  { label: "News",         href: "/news"         },
+  { label: "Home",         href: "/home"     },
+  { label: "Market",       href: "/market"   },
+  { label: "News",         href: "/news"     },
+  { label: "Learn",        href: "/learn"    },
+  { label: "แผนการลงทุน", href: "/plans"    },
+  { label: "เกี่ยวกับเรา", href: "/about"  },
 ];
 
 const LEGAL_LINKS = [
