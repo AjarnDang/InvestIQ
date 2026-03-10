@@ -101,6 +101,7 @@ export default function WatchlistPage() {
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
               <h3 className="text-base font-semibold text-slate-800">Add to Watchlist</h3>
               <button
+                title="Close modal"
                 onClick={() => setShowAddModal(false)}
                 className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
               >

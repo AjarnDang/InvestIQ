@@ -133,6 +133,7 @@ export default function TransactionsPage() {
                 <div className="grid grid-cols-2 gap-2 md:flex md:gap-2">
                   {/* Type */}
                   <select
+                    title="Transaction Type"
                     value={filter.type}
                     onChange={(e) => dispatch(updateFilter({ type: e.target.value as TransactionType | "ALL" }))}
                     className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 px-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -143,6 +144,7 @@ export default function TransactionsPage() {
                   </select>
                   {/* Status */}
                   <select
+                    title="Transaction Status"
                     value={filter.status}
                     onChange={(e) => dispatch(updateFilter({ status: e.target.value as TransactionStatus | "ALL" }))}
                     className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 px-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -155,12 +157,14 @@ export default function TransactionsPage() {
                 {/* Date Range */}
                 <div className="grid grid-cols-2 gap-2 md:flex md:items-center md:gap-2">
                   <input
+                    title="From Date"
                     type="date"
                     value={filter.dateFrom ?? ""}
                     onChange={(e) => dispatch(updateFilter({ dateFrom: e.target.value || null }))}
                     className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 px-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                   <input
+                    title="To Date"
                     type="date"
                     value={filter.dateTo ?? ""}
                     onChange={(e) => dispatch(updateFilter({ dateTo: e.target.value || null }))}
