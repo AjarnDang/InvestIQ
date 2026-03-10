@@ -22,14 +22,14 @@ export function AuthGuard({ children }: AuthGuardProps) {
       dispatch(rehydrateAuth(session));
     } else {
       dispatch(setInitialized());
-      router.replace("/login");
+      router.replace("/home");
     }
   }, [dispatch, router]);
 
   // Redirect once initialized and not authenticated
   useEffect(() => {
     if (!initializing && !isAuthenticated) {
-      router.replace("/login");
+      router.replace("/home");
     }
   }, [initializing, isAuthenticated, router]);
 

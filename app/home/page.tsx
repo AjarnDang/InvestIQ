@@ -139,7 +139,7 @@ export default function HomePage() {
           </div>
 
           {/* Dashboard Preview */}
-          <div className="animate-float mt-16 mx-auto max-w-3xl rounded-2xl border border-white/10 bg-slate-900/80 backdrop-blur-sm shadow-2xl shadow-indigo-900/20 overflow-hidden">
+          <div className="animate-float my-16 mx-auto max-w-3xl rounded-2xl border border-white/10 bg-slate-900/80 backdrop-blur-sm shadow-2xl shadow-indigo-900/20 overflow-hidden">
             {/* Fake browser chrome */}
             <div className="flex items-center gap-2 px-4 py-3 border-b border-white/10 bg-slate-900">
               <div className="h-2.5 w-2.5 rounded-full bg-red-500/70" />

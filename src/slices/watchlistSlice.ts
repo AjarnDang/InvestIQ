@@ -1,5 +1,5 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
-import type { WatchlistState, WatchlistItem } from "@/src/types";
+import type { WatchlistState, WatchlistItem, Stock } from "@/src/types";
 import { initialWatchlistState } from "@/src/state/initialState";
 
 const watchlistSlice = createSlice({
@@ -60,6 +60,21 @@ const watchlistSlice = createSlice({
         item.changePercent = action.payload.changePercent;
       }
     },
+
+    /** Bulk-update all watchlist item prices from real market data */
+    syncPricesFromMarket(state, action: PayloadAction<Stock[]>) {
+      const stockMap = new Map(action.payload.map((s) => [s.symbol, s]));
+      state.items = state.items.map((item) => {
+        const stock = stockMap.get(item.symbol);
+        if (!stock) return item;
+        return {
+          ...item,
+          price:         stock.price,
+          change:        stock.change,
+          changePercent: stock.changePercent,
+        };
+      });
+    },
   },
 });
 
@@ -72,6 +87,7 @@ export const {
   toggleAlert,
   setAlertPrice,
   updateItemPrice,
+  syncPricesFromMarket,
 } = watchlistSlice.actions;
 
 export default watchlistSlice.reducer;

@@ -31,7 +31,7 @@ export default function DashboardPage() {
   const { summary, holdings, performance, allocation } = useAppSelector(
     (s) => s.portfolio
   );
-  const { indices } = useAppSelector((s) => s.market);
+  const { indices, loading: marketLoading } = useAppSelector((s) => s.market);
   const { transactions } = useAppSelector((s) => s.transactions);
 
   const recentTxns = transactions.slice(0, 5);
@@ -43,7 +43,15 @@ export default function DashboardPage() {
     <div className="space-y-4 md:space-y-6">
       {/* Market Indices Banner — horizontal scroll on mobile */}
       <div className="flex gap-2 md:gap-3 overflow-x-auto pb-1 -mx-4 px-4 md:mx-0 md:px-0 scrollbar-hide">
-        {indices.map((idx) => (
+        {marketLoading && indices.length === 0
+          ? Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="flex-shrink-0 rounded-xl border border-slate-200 bg-white px-3 md:px-4 py-2 shadow-sm animate-pulse space-y-1.5 min-w-[100px]">
+                <div className="h-2.5 w-14 rounded bg-slate-200" />
+                <div className="h-4 w-20 rounded bg-slate-200" />
+                <div className="h-2.5 w-10 rounded bg-slate-100" />
+              </div>
+            ))
+          : indices.map((idx) => (
           <div
             key={idx.name}
             className="flex-shrink-0 flex items-center gap-2 md:gap-3 rounded-xl border border-slate-200 bg-white px-3 md:px-4 py-2 shadow-sm"

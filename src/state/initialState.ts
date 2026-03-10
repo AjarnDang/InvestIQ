@@ -8,8 +8,6 @@ import type {
 } from "@/src/types";
 
 import { MOCK_HOLDINGS, MOCK_PORTFOLIO_SUMMARY, MOCK_ALLOCATION } from "@/src/data/holdings";
-import { MOCK_STOCKS } from "@/src/data/stocks";
-import { MOCK_INDICES } from "@/src/data/indices";
 import { MOCK_TRANSACTIONS } from "@/src/data/transactions";
 import { MOCK_WATCHLIST } from "@/src/data/watchlist";
 import { MOCK_NOTIFICATIONS } from "@/src/data/notifications";
@@ -37,13 +35,15 @@ export const initialPortfolioState: PortfolioState = {
 };
 
 // ─── Market ───────────────────────────────────────────────────────────────────
+// Start with empty arrays — real data is fetched from Yahoo Finance on mount.
+// Mock data is only used as API fallback if Yahoo Finance is unreachable.
 
 export const initialMarketState: MarketState = {
-  stocks: MOCK_STOCKS,
-  indices: MOCK_INDICES,
+  stocks: [],
+  indices: [],
   selectedStock: null,
   priceHistory: [],
-  loading: false,
+  loading: true, // true so UI shows skeletons immediately
   error: null,
 };
 

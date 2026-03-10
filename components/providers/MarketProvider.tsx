@@ -1,34 +1,43 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useAppDispatch } from "@/src/store/hooks";
+import { useAppDispatch, useAppSelector } from "@/src/store/hooks";
 import { fetchMarketData, fetchStockHistory } from "@/src/slices/marketSlice";
-import { useAppSelector } from "@/src/store/hooks";
+import { syncPricesFromMarket as syncPortfolio } from "@/src/slices/portfolioSlice";
+import { syncPricesFromMarket as syncWatchlist } from "@/src/slices/watchlistSlice";
+import type { Stock } from "@/src/types";
 
-const POLL_INTERVAL_MS = 60_000; // refresh every 60 seconds
+const POLL_INTERVAL_MS = 60_000; // refresh live prices every 60 seconds
 
 /**
- * Fetches live market data (quotes + indices) on mount and polls every minute.
- * Also re-fetches price history whenever the selected stock changes.
- * Place this inside the authenticated layout so it only runs when logged in.
+ * Fetches live market data from Yahoo Finance on mount and polls every minute.
+ * After every successful fetch, propagates real prices to portfolio and watchlist.
+ * Also fetches price history whenever the selected stock changes.
  */
 export function MarketProvider({ children }: { children: React.ReactNode }) {
-  const dispatch     = useAppDispatch();
+  const dispatch      = useAppDispatch();
   const selectedStock = useAppSelector((s) => s.market.selectedStock);
-  const intervalRef  = useRef<ReturnType<typeof setInterval> | null>(null);
+  const intervalRef   = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  async function loadAndSync() {
+    const result = await dispatch(fetchMarketData());
+    if (fetchMarketData.fulfilled.match(result)) {
+      const stocks = result.payload.stocks as Stock[];
+      dispatch(syncPortfolio(stocks));
+      dispatch(syncWatchlist(stocks));
+    }
+  }
 
   // Initial fetch + polling
   useEffect(() => {
-    dispatch(fetchMarketData());
+    loadAndSync();
 
-    intervalRef.current = setInterval(() => {
-      dispatch(fetchMarketData());
-    }, POLL_INTERVAL_MS);
+    intervalRef.current = setInterval(loadAndSync, POLL_INTERVAL_MS);
 
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [dispatch]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch price history whenever selected stock changes
   useEffect(() => {

@@ -73,7 +73,17 @@ export default function MarketPage() {
 
       {/* Indices — 2 cols on mobile, 4 on desktop */}
       <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
-        {indices.map((idx) => (
+        {loading && indices.length === 0
+          ? Array.from({ length: 4 }).map((_, i) => (
+              <Card key={i} className="overflow-hidden animate-pulse">
+                <CardContent className="p-3 md:p-4 space-y-2">
+                  <div className="h-3 w-16 rounded bg-slate-200" />
+                  <div className="h-6 w-24 rounded bg-slate-200" />
+                  <div className="h-4 w-12 rounded bg-slate-100" />
+                </CardContent>
+              </Card>
+            ))
+          : indices.map((idx) => (
           <Card key={idx.name} className="overflow-hidden">
             <CardContent className="p-3 md:p-4">
               <p className="text-xs font-medium text-slate-500">{idx.name}</p>
@@ -95,7 +105,7 @@ export default function MarketPage() {
       </div>
 
       {/* Gainers & Losers */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className={cn("grid grid-cols-1 gap-4 md:grid-cols-2", loading && stocks.length === 0 && "opacity-50 pointer-events-none")}>
         <Card>
           <CardHeader>
             <div className="flex items-center gap-2">
@@ -315,7 +325,23 @@ export default function MarketPage() {
                 </div>
               </div>
             ))}
-            {filtered.length === 0 && (
+            {loading && stocks.length === 0 && (
+              <div className="divide-y divide-slate-100">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="flex items-center justify-between px-4 py-3 animate-pulse">
+                    <div className="space-y-1.5">
+                      <div className="h-3.5 w-16 rounded bg-slate-200" />
+                      <div className="h-2.5 w-32 rounded bg-slate-100" />
+                    </div>
+                    <div className="space-y-1.5 text-right">
+                      <div className="h-3.5 w-14 rounded bg-slate-200 ml-auto" />
+                      <div className="h-2.5 w-10 rounded bg-slate-100 ml-auto" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {!loading && filtered.length === 0 && (
               <p className="py-12 text-center text-sm text-slate-400">No stocks found</p>
             )}
           </div>
@@ -379,7 +405,24 @@ export default function MarketPage() {
                     </td>
                   </tr>
                 ))}
-                {filtered.length === 0 && (
+                {loading && stocks.length === 0 &&
+                  Array.from({ length: 6 }).map((_, i) => (
+                    <tr key={i} className="animate-pulse">
+                      <td className="px-4 py-3">
+                        <div className="space-y-1.5">
+                          <div className="h-3.5 w-16 rounded bg-slate-200" />
+                          <div className="h-2.5 w-28 rounded bg-slate-100" />
+                        </div>
+                      </td>
+                      {Array.from({ length: 7 }).map((__, j) => (
+                        <td key={j} className="px-4 py-3 text-right">
+                          <div className="h-3.5 w-14 rounded bg-slate-200 ml-auto" />
+                        </td>
+                      ))}
+                    </tr>
+                  ))
+                }
+                {!loading && filtered.length === 0 && (
                   <tr>
                     <td colSpan={8} className="py-12 text-center text-sm text-slate-400">No stocks found</td>
                   </tr>
