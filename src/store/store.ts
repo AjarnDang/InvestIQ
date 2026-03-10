@@ -5,6 +5,7 @@ import transactionReducer from "@/src/slices/transactionSlice";
 import watchlistReducer from "@/src/slices/watchlistSlice";
 import uiReducer from "@/src/slices/uiSlice";
 import authReducer from "@/src/slices/authSlice";
+import localeReducer from "@/src/slices/localeSlice";
 
 export const store = configureStore({
   reducer: {
@@ -14,6 +15,7 @@ export const store = configureStore({
     transactions: transactionReducer,
     watchlist: watchlistReducer,
     ui: uiReducer,
+    locale: localeReducer,
   },
 });
 

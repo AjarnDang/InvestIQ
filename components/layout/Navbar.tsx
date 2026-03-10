@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -13,6 +13,8 @@ import {
   LogOut,
   Menu,
   X,
+  Globe,
+  ExternalLink,
 } from "lucide-react";
 import { cn } from "@/src/utils/helpers";
 import { useAppDispatch, useAppSelector } from "@/src/store/hooks";
@@ -21,8 +23,19 @@ import {
   markAllNotificationsRead,
   markNotificationRead,
 } from "@/src/slices/uiSlice";
+import { setLocale } from "@/src/slices/localeSlice";
 import { MAIN_NAV_ITEMS, PROFILE_NAV_ITEMS } from "@/src/data/navigation";
 import { timeAgo } from "@/src/utils/formatters";
+import { useTranslations } from "@/src/i18n/useTranslations";
+import { locales, localeNames, localeFlags, type Locale } from "@/src/i18n/config";
+
+interface SearchResult {
+  symbol:   string;
+  name:     string;
+  exchange: string;
+  type:     string;
+  sector?:  string;
+}
 
 const NOTIF_ICON: Record<string, string> = {
   success: "✓",
@@ -37,29 +50,41 @@ const NOTIF_COLOR: Record<string, string> = {
   error:   "bg-red-100 text-red-600",
 };
 
+const TYPE_BADGE: Record<string, string> = {
+  EQUITY:    "bg-blue-50 text-blue-600",
+  ETF:       "bg-purple-50 text-purple-600",
+  CRYPTO:    "bg-orange-50 text-orange-600",
+  COMMODITY: "bg-amber-50 text-amber-600",
+  INDEX:     "bg-slate-100 text-slate-500",
+};
+
 export function Navbar() {
   const pathname  = usePathname();
   const router    = useRouter();
   const dispatch  = useAppDispatch();
+  const { t, locale } = useTranslations();
 
   const { isAuthenticated, user } = useAppSelector((s) => s.auth);
   const notifications = useAppSelector((s) => s.ui.notifications);
-  const stocks        = useAppSelector((s) => s.market.stocks);
   const unreadCount   = notifications.filter((n) => !n.read).length;
 
-  const [scrolled,     setScrolled]     = useState(false);
-  const [mobileOpen,   setMobileOpen]   = useState(false);
-  const [showNotif,    setShowNotif]    = useState(false);
-  const [showProfile,  setShowProfile]  = useState(false);
-  const [searchQuery,  setSearchQuery]  = useState("");
-  const [searchOpen,   setSearchOpen]   = useState(false);
+  const [scrolled,       setScrolled]       = useState(false);
+  const [mobileOpen,     setMobileOpen]     = useState(false);
+  const [showNotif,      setShowNotif]      = useState(false);
+  const [showProfile,    setShowProfile]    = useState(false);
+  const [showLang,       setShowLang]       = useState(false);
+  const [searchQuery,    setSearchQuery]    = useState("");
+  const [searchOpen,     setSearchOpen]     = useState(false);
+  const [searchResults,  setSearchResults]  = useState<SearchResult[]>([]);
+  const [searching,      setSearching]      = useState(false);
 
-  const searchRef = useRef<HTMLDivElement>(null);
+  const searchRef  = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Shadow on scroll
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 4);
-    window.addEventListener("scroll", onScroll);
+    window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
@@ -74,18 +99,33 @@ export function Navbar() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
-  // ── Search results ──────────────────────────────────────────────────────
-  const searchResults = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    if (q.length < 1) return [];
-    return stocks
-      .filter(
-        (s) =>
-          s.symbol.toLowerCase().includes(q) ||
-          s.name.toLowerCase().includes(q),
-      )
-      .slice(0, 7);
-  }, [stocks, searchQuery]);
+  // ── Debounced live search ────────────────────────────────────────────────
+  const runSearch = useCallback(async (q: string) => {
+    if (!q.trim()) {
+      setSearchResults([]);
+      setSearching(false);
+      return;
+    }
+    setSearching(true);
+    try {
+      const res = await fetch(`/api/market/search?q=${encodeURIComponent(q.trim())}`);
+      if (res.ok) {
+        const data = await res.json();
+        setSearchResults(data.results ?? []);
+      }
+    } catch {
+      setSearchResults([]);
+    } finally {
+      setSearching(false);
+    }
+  }, []);
+
+  function handleSearchChange(val: string) {
+    setSearchQuery(val);
+    setSearchOpen(true);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => runSearch(val), 280);
+  }
 
   function handleLogout() {
     dispatch(logout());
@@ -106,6 +146,85 @@ export function Navbar() {
     setSearchOpen(false);
     setMobileOpen(false);
     router.push("/market");
+  }
+
+  function switchLocale(l: Locale) {
+    dispatch(setLocale(l));
+    setShowLang(false);
+  }
+
+  // ── Search dropdown shared renderer ────────────────────────────────────
+  function renderSearchDropdown() {
+    if (!searchOpen) return null;
+    if (!searchQuery.trim()) return null;
+
+    if (searching) {
+      return (
+        <div className="absolute right-0 top-10 z-50 w-72 rounded-xl border border-slate-200 bg-white shadow-lg p-4 text-center">
+          <span className="text-xs text-slate-400">{t("common.loading")}</span>
+        </div>
+      );
+    }
+
+    if (searchResults.length === 0) {
+      return (
+        <div className="absolute right-0 top-10 z-50 w-64 rounded-xl border border-slate-200 bg-white shadow-lg p-4">
+          <p className="text-xs text-slate-400 text-center">
+            {locale === "th"
+              ? `ไม่พบผลลัพธ์สำหรับ "${searchQuery}"`
+              : `No results for "${searchQuery}"`}
+          </p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="absolute right-0 top-10 z-50 w-80 rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden">
+        <div className="px-3 py-2 border-b border-slate-100 bg-slate-50">
+          <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
+            {locale === "th"
+              ? `ผลการค้นหา · ${searchResults.length} รายการ`
+              : `${searchResults.length} result${searchResults.length !== 1 ? "s" : ""}`}
+          </p>
+        </div>
+        <div className="divide-y divide-slate-50 max-h-72 overflow-y-auto">
+          {searchResults.map((item) => (
+            <button
+              key={item.symbol}
+              onClick={() => goToStock(item.symbol)}
+              className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 transition-colors text-left"
+            >
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <p className="text-sm font-bold text-slate-800">{item.symbol}</p>
+                  <span
+                    className={cn(
+                      "text-[9px] font-semibold px-1.5 py-0.5 rounded uppercase",
+                      TYPE_BADGE[item.type?.toUpperCase()] ?? "bg-slate-100 text-slate-500",
+                    )}
+                  >
+                    {item.type}
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-400 truncate">{item.name}</p>
+              </div>
+              <div className="text-right shrink-0 text-[10px] text-slate-400 flex items-center gap-1">
+                <span>{item.exchange}</span>
+                <ExternalLink size={9} className="text-slate-300" />
+              </div>
+            </button>
+          ))}
+        </div>
+        <div className="px-3 py-2 border-t border-slate-100 bg-slate-50">
+          <button
+            onClick={goToMarket}
+            className="text-xs text-indigo-600 hover:text-indigo-700 font-medium"
+          >
+            {locale === "th" ? "ดูตลาดทั้งหมด →" : "View full market →"}
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -129,7 +248,7 @@ export function Navbar() {
             </span>
           </Link>
 
-          {/* ── Desktop nav — same for all users ───────────────────────── */}
+          {/* ── Desktop nav ─────────────────────────────────────────────── */}
           <div className="hidden lg:flex items-center gap-0.5 flex-1 min-w-0">
             {MAIN_NAV_ITEMS.map((item) => {
               const active = pathname === item.href;
@@ -162,83 +281,49 @@ export function Navbar() {
               <input
                 type="text"
                 value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setSearchOpen(true);
-                }}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 onFocus={() => setSearchOpen(true)}
-                placeholder="ค้นหาหุ้น..."
-                className="h-8 w-40 xl:w-52 rounded-lg border border-slate-200 bg-slate-50 pl-8 pr-3 text-xs text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent"
+                placeholder={t("nav.search")}
+                className="h-8 w-44 xl:w-56 rounded-lg border border-slate-200 bg-slate-50 pl-8 pr-3 text-xs text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent"
               />
+              {renderSearchDropdown()}
+            </div>
 
-              {/* Dropdown — results */}
-              {searchOpen && searchResults.length > 0 && (
-                <div className="absolute right-0 top-10 z-50 w-72 rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden">
-                  <div className="px-3 py-2 border-b border-slate-100 bg-slate-50">
-                    <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
-                      ผลการค้นหา · {searchResults.length} รายการ
-                    </p>
-                  </div>
-                  <div className="divide-y divide-slate-50 max-h-64 overflow-y-auto">
-                    {searchResults.map((stock) => (
+            {/* ── Language switcher ───────────────────────────────────── */}
+            <div className="relative">
+              <button
+                onClick={() => { setShowLang((v) => !v); setShowProfile(false); setShowNotif(false); }}
+                className="flex items-center gap-1 h-8 px-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors text-xs font-semibold"
+                aria-label="Switch language"
+                title="Switch language"
+              >
+                <Globe size={13} className="text-slate-400" />
+                <span className="hidden sm:block uppercase">{locale}</span>
+              </button>
+
+              {showLang && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowLang(false)} />
+                  <div className="absolute right-0 top-10 z-50 w-40 rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden">
+                    {locales.map((l) => (
                       <button
-                        key={stock.symbol}
-                        onClick={() => goToStock(stock.symbol)}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 transition-colors text-left"
+                        key={l}
+                        onClick={() => switchLocale(l)}
+                        className={cn(
+                          "w-full flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors",
+                          l === locale
+                            ? "bg-indigo-50 text-indigo-700 font-semibold"
+                            : "text-slate-700 hover:bg-slate-50",
+                        )}
                       >
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-slate-800">
-                            {stock.symbol}
-                          </p>
-                          <p className="text-[10px] text-slate-400 truncate">
-                            {stock.name}
-                          </p>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <p className="text-sm font-semibold text-slate-700 tabular-nums">
-                            ฿{stock.price.toFixed(2)}
-                          </p>
-                          <p
-                            className={cn(
-                              "text-[10px] font-semibold tabular-nums flex items-center justify-end gap-0.5",
-                              stock.changePercent >= 0
-                                ? "text-emerald-600"
-                                : "text-red-500",
-                            )}
-                          >
-                            {stock.changePercent >= 0 ? (
-                              <TrendingUp size={9} />
-                            ) : (
-                              <TrendingDown size={9} />
-                            )}
-                            {stock.changePercent >= 0 ? "+" : ""}
-                            {stock.changePercent.toFixed(2)}%
-                          </p>
-                        </div>
+                        <span>{localeFlags[l]}</span>
+                        <span>{localeNames[l]}</span>
+                        {l === locale && <Check size={12} className="ml-auto text-indigo-500" />}
                       </button>
                     ))}
                   </div>
-                  <div className="px-3 py-2 border-t border-slate-100 bg-slate-50">
-                    <button
-                      onClick={goToMarket}
-                      className="text-xs text-indigo-600 hover:text-indigo-700 font-medium"
-                    >
-                      ดูตลาดทั้งหมด →
-                    </button>
-                  </div>
-                </div>
+                </>
               )}
-
-              {/* Dropdown — no results */}
-              {searchOpen &&
-                searchQuery.trim().length >= 1 &&
-                searchResults.length === 0 && (
-                  <div className="absolute right-0 top-10 z-50 w-64 rounded-xl border border-slate-200 bg-white shadow-lg p-4">
-                    <p className="text-xs text-slate-400 text-center">
-                      ไม่พบหุ้นที่ตรงกับ &ldquo;{searchQuery}&rdquo;
-                    </p>
-                  </div>
-                )}
             </div>
 
             {/* ── Authenticated: bell + profile ──────────────────────── */}
@@ -264,30 +349,26 @@ export function Navbar() {
 
                   {showNotif && (
                     <>
-                      <div
-                        className="fixed inset-0 z-40"
-                        onClick={() => setShowNotif(false)}
-                      />
+                      <div className="fixed inset-0 z-40" onClick={() => setShowNotif(false)} />
                       <div className="absolute right-0 top-10 z-50 w-72 md:w-80 rounded-xl border border-slate-200 bg-white shadow-lg">
                         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
                           <span className="text-sm font-semibold text-slate-700">
-                            Notifications
+                            {locale === "th" ? "การแจ้งเตือน" : "Notifications"}
                           </span>
                           {unreadCount > 0 && (
                             <button
-                              onClick={() =>
-                                dispatch(markAllNotificationsRead())
-                              }
+                              onClick={() => dispatch(markAllNotificationsRead())}
                               className="flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-700"
                             >
-                              <Check size={11} /> Mark all read
+                              <Check size={11} />
+                              {locale === "th" ? "อ่านทั้งหมด" : "Mark all read"}
                             </button>
                           )}
                         </div>
                         <div className="max-h-72 overflow-y-auto divide-y divide-slate-100">
                           {notifications.length === 0 ? (
                             <p className="py-8 text-center text-xs text-slate-400">
-                              No notifications
+                              {locale === "th" ? "ไม่มีการแจ้งเตือน" : "No notifications"}
                             </p>
                           ) : (
                             notifications.map((n) => (
@@ -343,7 +424,7 @@ export function Navbar() {
                       setShowNotif(false);
                     }}
                     className="flex items-center gap-2 rounded-lg border border-slate-200 px-2 py-1 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
-                    aria-label="My account"
+                    aria-label={t("auth.profile")}
                   >
                     <div className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-600 text-[11px] font-bold text-white shrink-0">
                       {user?.name?.charAt(0)?.toUpperCase() ?? "U"}
@@ -356,10 +437,7 @@ export function Navbar() {
 
                   {showProfile && (
                     <>
-                      <div
-                        className="fixed inset-0 z-40"
-                        onClick={() => setShowProfile(false)}
-                      />
+                      <div className="fixed inset-0 z-40" onClick={() => setShowProfile(false)} />
                       <div className="absolute right-0 top-10 z-50 w-64 rounded-2xl border border-slate-200 bg-white shadow-xl overflow-hidden">
                         {/* User header */}
                         <div className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center gap-3">
@@ -379,7 +457,7 @@ export function Navbar() {
                         {/* Profile nav tabs — 2×2 grid */}
                         <div className="p-3">
                           <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2 px-1">
-                            My Account
+                            {t("auth.profile")}
                           </p>
                           <div className="grid grid-cols-2 gap-1.5">
                             {PROFILE_NAV_ITEMS.map((item) => {
@@ -398,9 +476,7 @@ export function Navbar() {
                                 >
                                   <item.icon
                                     size={16}
-                                    className={
-                                      active ? "text-indigo-600" : "text-slate-400"
-                                    }
+                                    className={active ? "text-indigo-600" : "text-slate-400"}
                                   />
                                   <span className="text-[11px] font-semibold leading-tight">
                                     {item.label}
@@ -418,7 +494,7 @@ export function Navbar() {
                             className="w-full flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
                           >
                             <LogOut size={14} />
-                            Sign Out
+                            {t("auth.logout")}
                           </button>
                         </div>
                       </div>
@@ -435,13 +511,13 @@ export function Navbar() {
                   href="/login"
                   className="hidden sm:block text-sm font-medium text-slate-600 hover:text-indigo-600 transition-colors px-2"
                 >
-                  Log In
+                  {t("auth.login")}
                 </Link>
                 <Link
                   href="/login"
                   className="flex items-center rounded-md bg-indigo-600 hover:bg-indigo-500 px-3 py-1.5 text-sm font-semibold text-white transition-colors"
                 >
-                  Get Started
+                  {t("auth.register")}
                 </Link>
               </>
             )}
@@ -450,7 +526,7 @@ export function Navbar() {
             <button
               onClick={() => setMobileOpen((v) => !v)}
               className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 transition-colors lg:hidden"
-              aria-label={mobileOpen ? "Close menu" : "Open menu"}
+              aria-label={mobileOpen ? t("nav.closeMenu") : t("nav.openMenu")}
             >
               {mobileOpen ? <X size={18} /> : <Menu size={18} />}
             </button>
@@ -477,44 +553,30 @@ export function Navbar() {
                 <input
                   type="text"
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="ค้นหาหุ้น เช่น AAPL, NVDA..."
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  placeholder={t("nav.search")}
                   className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 pl-8 pr-3 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-400"
                 />
-                {searchResults.length > 0 && (
+                {searchQuery.trim() && !searching && searchResults.length > 0 && (
                   <div className="mt-1.5 rounded-xl border border-slate-200 bg-white overflow-hidden shadow">
-                    {searchResults.map((stock) => (
+                    {searchResults.map((item) => (
                       <button
-                        key={stock.symbol}
-                        onClick={() => goToStock(stock.symbol)}
+                        key={item.symbol}
+                        onClick={() => goToStock(item.symbol)}
                         className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 text-left border-b border-slate-50 last:border-0 transition-colors"
                       >
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-slate-800">
-                            {stock.symbol}
-                          </p>
-                          <p className="text-[10px] text-slate-400 truncate">
-                            {stock.name}
-                          </p>
+                          <p className="text-sm font-bold text-slate-800">{item.symbol}</p>
+                          <p className="text-[10px] text-slate-400 truncate">{item.name}</p>
                         </div>
-                        <p
-                          className={cn(
-                            "text-xs font-bold tabular-nums shrink-0",
-                            stock.changePercent >= 0
-                              ? "text-emerald-600"
-                              : "text-red-500",
-                          )}
-                        >
-                          {stock.changePercent >= 0 ? "+" : ""}
-                          {stock.changePercent.toFixed(2)}%
-                        </p>
+                        <span className="text-[10px] text-slate-400 shrink-0">{item.exchange}</span>
                       </button>
                     ))}
                   </div>
                 )}
               </div>
 
-              {/* Main nav — same for all */}
+              {/* Main nav */}
               {MAIN_NAV_ITEMS.map((item) => {
                 const active = pathname === item.href;
                 return (
@@ -541,11 +603,34 @@ export function Navbar() {
                 );
               })}
 
+              {/* Language switcher in mobile drawer */}
+              <div className="pt-2 mt-1 border-t border-slate-100">
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-3 py-1">
+                  {locale === "th" ? "ภาษา" : "Language"}
+                </p>
+                <div className="flex gap-2 px-3 py-1">
+                  {locales.map((l) => (
+                    <button
+                      key={l}
+                      onClick={() => switchLocale(l)}
+                      className={cn(
+                        "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors",
+                        l === locale
+                          ? "bg-indigo-50 border-indigo-200 text-indigo-700"
+                          : "border-slate-200 text-slate-600 hover:bg-slate-50",
+                      )}
+                    >
+                      {localeFlags[l]} {localeNames[l]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Authenticated: profile section */}
               {isAuthenticated ? (
                 <div className="pt-2 mt-2 border-t border-slate-100 space-y-0.5">
                   <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-3 py-1">
-                    My Account
+                    {t("auth.profile")}
                   </p>
                   {PROFILE_NAV_ITEMS.map((item) => {
                     const active = pathname === item.href;
@@ -563,9 +648,7 @@ export function Navbar() {
                       >
                         <item.icon
                           size={16}
-                          className={
-                            active ? "text-indigo-600" : "text-slate-400"
-                          }
+                          className={active ? "text-indigo-600" : "text-slate-400"}
                         />
                         {item.label}
                       </Link>
@@ -591,26 +674,25 @@ export function Navbar() {
                       className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
                     >
                       <LogOut size={16} />
-                      Sign Out
+                      {t("auth.logout")}
                     </button>
                   </div>
                 </div>
               ) : (
-                /* Guest: login / register */
                 <div className="pt-2 mt-2 border-t border-slate-100 flex flex-col gap-2">
                   <Link
                     href="/login"
                     onClick={() => setMobileOpen(false)}
                     className="flex items-center justify-center w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
                   >
-                    Log In
+                    {t("auth.login")}
                   </Link>
                   <Link
                     href="/login"
                     onClick={() => setMobileOpen(false)}
                     className="flex items-center justify-center w-full rounded-xl bg-indigo-600 hover:bg-indigo-500 px-4 py-2.5 text-sm font-bold text-white transition-colors"
                   >
-                    Get Started Free
+                    {t("auth.register")}
                   </Link>
                 </div>
               )}

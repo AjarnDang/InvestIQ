@@ -1,24 +1,28 @@
+"use client";
+
 import React from "react";
 import Link from "next/link";
 import { TrendingUp } from "lucide-react";
-
-const NAV_LINKS = [
-  { label: "Home",         href: "/home"     },
-  { label: "Market",       href: "/market"   },
-  { label: "News",         href: "/news"     },
-  { label: "Learn",        href: "/learn"    },
-  { label: "แผนการลงทุน", href: "/plans"    },
-  { label: "เกี่ยวกับเรา", href: "/about"  },
-];
-
-const LEGAL_LINKS = [
-  { label: "Privacy Policy", href: "#" },
-  { label: "Terms of Use",   href: "#" },
-  { label: "Contact Us",     href: "#" },
-];
+import { useTranslations } from "@/src/i18n/useTranslations";
 
 export function Footer() {
+  const { t, locale } = useTranslations();
   const year = new Date().getFullYear();
+
+  const navLinks = [
+    { label: t("nav.home"),     href: "/home"   },
+    { label: t("nav.market"),   href: "/market" },
+    { label: t("nav.news"),     href: "/news"   },
+    { label: t("nav.learn"),    href: "/learn"  },
+    { label: t("nav.planning"), href: "/plans"  },
+    { label: t("nav.about"),    href: "/about"  },
+  ];
+
+  const legalLinks = [
+    { label: t("footer.privacy"), href: "#" },
+    { label: t("footer.terms"),   href: "#" },
+    { label: t("footer.cookies"), href: "#" },
+  ];
 
   return (
     <footer className="border-t border-slate-200 bg-white mt-8">
@@ -35,18 +39,20 @@ export function Footer() {
               <span className="text-sm font-bold tracking-tight text-slate-900">InvestIQ</span>
             </Link>
             <p className="text-xs text-slate-500 leading-relaxed max-w-[240px]">
-              แพลตฟอร์มติดตามการลงทุน Real-time สำหรับตลาดหุ้นไทยและสหรัฐอเมริกา
+              {t("footer.tagline")}
             </p>
             <p className="text-[11px] text-slate-400">
-              ข้อมูลตลาดจาก Yahoo Finance
+              {locale === "th" ? "ข้อมูลตลาดจาก Yahoo Finance" : "Market data by Yahoo Finance"}
             </p>
           </div>
 
           {/* Navigation */}
           <div>
-            <p className="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-3">Navigation</p>
+            <p className="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-3">
+              {locale === "th" ? "เมนู" : "Navigation"}
+            </p>
             <ul className="grid grid-cols-2 gap-y-2 gap-x-4">
-              {NAV_LINKS.map((item) => (
+              {navLinks.map((item) => (
                 <li key={item.href}>
                   <Link
                     href={item.href}
@@ -61,9 +67,11 @@ export function Footer() {
 
           {/* Legal */}
           <div>
-            <p className="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-3">Legal</p>
+            <p className="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-3">
+              {t("footer.legal")}
+            </p>
             <ul className="space-y-2">
-              {LEGAL_LINKS.map((item) => (
+              {legalLinks.map((item) => (
                 <li key={item.label}>
                   <a
                     href={item.href}
@@ -75,7 +83,7 @@ export function Footer() {
               ))}
             </ul>
             <p className="text-xs text-slate-400 mt-4 leading-relaxed">
-              ข้อมูลบนเว็บไซต์นี้มีไว้เพื่อข้อมูลเท่านั้น ไม่ถือเป็นคำแนะนำการลงทุน
+              {t("footer.disclaimer")}
             </p>
           </div>
         </div>
@@ -85,7 +93,7 @@ export function Footer() {
       <div className="border-t border-slate-100 bg-slate-50 px-4 md:px-6 py-3">
         <div className="mx-auto max-w-7xl flex flex-col sm:flex-row items-center justify-between gap-2">
           <p className="text-[11px] text-slate-400">
-            © {year} InvestIQ. All rights reserved.
+            {t("footer.copyright", { year: String(year) })}
           </p>
           <div className="flex items-center gap-1 text-[11px] text-slate-400">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 inline-block" />

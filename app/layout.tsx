@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { ReduxProvider } from "@/components/providers/ReduxProvider";
 import { MarketProvider } from "@/components/providers/MarketProvider";
+import { LocaleProvider } from "@/components/providers/LocaleProvider";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -24,7 +25,9 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${inter.variable} font-sans antialiased`}>
         <ReduxProvider>
-          <MarketProvider>{children}</MarketProvider>
+          <LocaleProvider>
+            <MarketProvider>{children}</MarketProvider>
+          </LocaleProvider>
         </ReduxProvider>
       </body>
     </html>
