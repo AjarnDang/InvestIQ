@@ -3,7 +3,7 @@ import {
   createAsyncThunk,
   type PayloadAction,
 } from "@reduxjs/toolkit";
-import type { MarketState, Stock, PriceHistory, NewsItem } from "@/src/types";
+import type { MarketState, Stock, PriceHistory, NewsItem, TrendingStock } from "@/src/types";
 import { initialMarketState } from "@/src/state/initialState";
 
 // ─── Async Thunks ─────────────────────────────────────────────────────────────
@@ -53,6 +53,21 @@ export const fetchMarketNews = createAsyncThunk(
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json() as { news: NewsItem[] };
       return data.news;
+    } catch (err) {
+      return rejectWithValue((err as Error).message);
+    }
+  }
+);
+
+/** Fetch today's hot / trending US stocks */
+export const fetchTrendingStocks = createAsyncThunk(
+  "market/fetchTrendingStocks",
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await fetch("/api/market/trending");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json() as { stocks: TrendingStock[] };
+      return data.stocks;
     } catch (err) {
       return rejectWithValue((err as Error).message);
     }
@@ -119,6 +134,9 @@ const marketSlice = createSlice({
     setNews(state, action: PayloadAction<NewsItem[]>) {
       state.news = action.payload;
     },
+    setTrendingStocks(state, action: PayloadAction<TrendingStock[]>) {
+      state.trendingStocks = action.payload;
+    },
     setError(state, action: PayloadAction<string | null>) {
       state.error = action.payload;
     },
@@ -181,6 +199,19 @@ const marketSlice = createSlice({
       .addCase(fetchMarketNews.rejected, (state) => {
         state.loadingNews = false;
       });
+
+    // ── fetchTrendingStocks ──────────────────────────────────────────────────
+    builder
+      .addCase(fetchTrendingStocks.pending, (state) => {
+        state.loadingTrending = true;
+      })
+      .addCase(fetchTrendingStocks.fulfilled, (state, action) => {
+        state.loadingTrending = false;
+        if (action.payload.length > 0) state.trendingStocks = action.payload;
+      })
+      .addCase(fetchTrendingStocks.rejected, (state) => {
+        state.loadingTrending = false;
+      });
   },
 });
 
@@ -192,6 +223,7 @@ export const {
   setIndices,
   setGlobalIndices,
   setNews,
+  setTrendingStocks,
   setError,
 } = marketSlice.actions;
 

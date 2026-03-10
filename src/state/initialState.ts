@@ -42,12 +42,14 @@ export const initialMarketState: MarketState = {
   stocks: [],
   indices: [],
   globalIndices: [],
+  trendingStocks: [],
   selectedStock: null,
   priceHistory: [],
   news: [],
-  loading: true,       // skeletons for SET indices/stocks
-  loadingGlobal: true, // skeletons for US indices
-  loadingNews: true,   // skeletons for news feed
+  loading: true,          // skeletons for SET indices/stocks
+  loadingGlobal: true,    // skeletons for US indices
+  loadingNews: true,      // skeletons for news feed
+  loadingTrending: true,  // skeletons for hot stocks
   error: null,
 };
 

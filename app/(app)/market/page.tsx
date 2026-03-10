@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import { Search, TrendingUp, TrendingDown, BarChart2, Activity, SlidersHorizontal, X } from "lucide-react";
+import { IndexBanner } from "@/components/ui/IndexBanner";
 import { useAppSelector, useAppDispatch } from "@/src/store/hooks";
 import { setSelectedStock } from "@/src/slices/marketSlice";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
@@ -9,7 +10,6 @@ import { Button } from "@/components/ui/Button";
 import { PerformanceChart } from "@/components/charts/PerformanceChart";
 import type { Stock } from "@/src/types";
 import {
-  formatInteger,
   formatMarketCap,
   formatVolume,
   formatPercent,
@@ -21,7 +21,7 @@ const SECTORS = ["ALL", "Energy", "Banking", "Technology", "Industrial", "Consum
 
 export default function MarketPage() {
   const dispatch = useAppDispatch();
-  const { stocks, indices, selectedStock, priceHistory, loading } = useAppSelector((s) => s.market);
+  const { stocks, indices, globalIndices, selectedStock, priceHistory, loading, loadingGlobal } = useAppSelector((s) => s.market);
   const [search, setSearch] = useState("");
   const [sector, setSector] = useState("ALL");
   const [sortField, setSortField] = useState<keyof Stock>("changePercent");
@@ -71,38 +71,13 @@ export default function MarketPage() {
         </div>
       </div>
 
-      {/* Indices — 2 cols on mobile, 4 on desktop */}
-      <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
-        {loading && indices.length === 0
-          ? Array.from({ length: 4 }).map((_, i) => (
-              <Card key={i} className="overflow-hidden animate-pulse">
-                <CardContent className="p-3 md:p-4 space-y-2">
-                  <div className="h-3 w-16 rounded bg-slate-200" />
-                  <div className="h-6 w-24 rounded bg-slate-200" />
-                  <div className="h-4 w-12 rounded bg-slate-100" />
-                </CardContent>
-              </Card>
-            ))
-          : indices.map((idx) => (
-          <Card key={idx.name} className="overflow-hidden">
-            <CardContent className="p-3 md:p-4">
-              <p className="text-xs font-medium text-slate-500">{idx.name}</p>
-              <p className="mt-1 text-lg md:text-xl font-bold text-slate-900">
-                {formatInteger(idx.value)}
-              </p>
-              <div
-                className={cn(
-                  "mt-1.5 inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full",
-                  getChangeBgColor(idx.changePercent)
-                )}
-              >
-                {idx.changePercent >= 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
-                {formatPercent(idx.changePercent)}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {/* ── Index Banner (SET + Global) — reusable scrollable strip ─────── */}
+      <IndexBanner
+        indices={indices}
+        globalIndices={globalIndices}
+        loading={loading}
+        loadingGlobal={loadingGlobal}
+      />
 
       {/* Gainers & Losers */}
       <div className={cn("grid grid-cols-1 gap-4 md:grid-cols-2", loading && stocks.length === 0 && "opacity-50 pointer-events-none")}>

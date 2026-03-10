@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState, useCallback, useEffect, useMemo } from "react";
+import React, { useMemo } from "react";
 import Link from "next/link";
 import {
   Wallet,
@@ -8,16 +8,14 @@ import {
   TrendingDown,
   Activity,
   ArrowUpRight,
-  ArrowDownRight,
-  ChevronLeft,
-  ChevronRight,
   Newspaper,
   ExternalLink,
-  RefreshCw,
+  Flame,
 } from "lucide-react";
 import { useAppSelector } from "@/src/store/hooks";
 import { StatCard } from "@/components/ui/StatCard";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
+import { PromoCarousel } from "@/components/ui/PromoCarousel";
 import {
   formatCurrency,
   formatInteger,
@@ -25,20 +23,8 @@ import {
   timeAgo,
 } from "@/src/utils/formatters";
 import { getChangeColor, getChangeBgColor, cn } from "@/src/utils/helpers";
-import { GLOBAL_INDEX_META } from "@/src/data/globalIndices";
 
-// Flags for known index names
-const INDEX_FLAG: Record<string, string> = {
-  "SET Index": "🇹🇭",
-  "SET50":     "🇹🇭",
-  "SET100":    "🇹🇭",
-  "MAI":       "🇹🇭",
-  "S&P 500":   "🇺🇸",
-  "NASDAQ":    "🇺🇸",
-  "Dow Jones": "🇺🇸",
-  "USD/THB":   "💵",
-};
-
+// Source color config for news badges
 const SOURCE_CONFIG: Record<string, { bg: string; text: string }> = {
   "MarketWatch":  { bg: "bg-emerald-100", text: "text-emerald-700" },
   "CNBC":         { bg: "bg-red-100",     text: "text-red-700"     },
@@ -50,209 +36,36 @@ function sourceBadgeClass(source: string) {
   return cfg ? `${cfg.bg} ${cfg.text}` : "bg-slate-100 text-slate-600";
 }
 
+const INDEX_FLAG: Record<string, string> = {
+  "S&P 500":   "🇺🇸",
+  "NASDAQ":    "🇺🇸",
+  "Dow Jones": "🇺🇸",
+  "USD/THB":   "💵",
+};
+
 const NEWS_PREVIEW_COUNT = 5;
 
 export default function DashboardPage() {
   const { summary, holdings } = useAppSelector((s) => s.portfolio);
   const {
-    indices,
     globalIndices,
+    trendingStocks,
     news,
-    loading: marketLoading,
-    loadingGlobal,
     loadingNews,
+    loadingTrending,
   } = useAppSelector((s) => s.market);
 
-  const topHoldings  = [...holdings].sort((a, b) => b.marketValue - a.marketValue).slice(0, 3);
-  const previewNews  = news.slice(0, NEWS_PREVIEW_COUNT);
-  const isIndicesLoading = (marketLoading && indices.length === 0) || (loadingGlobal && globalIndices.length === 0);
-  const allIndices = useMemo(() => [...indices, ...globalIndices], [indices, globalIndices]);
-
-  // ── Index banner scroll (mouse drag + arrow buttons) ──────────────────────
-  const bannerRef     = useRef<HTMLDivElement>(null);
-  const isDragging    = useRef(false);
-  const dragStartX    = useRef(0);
-  const dragScrollL   = useRef(0);
-  const [showLeft,  setShowLeft]  = useState(false);
-  const [showRight, setShowRight] = useState(false);
-
-  const updateArrows = useCallback(() => {
-    const el = bannerRef.current;
-    if (!el) return;
-    setShowLeft(el.scrollLeft > 4);
-    setShowRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 4);
-  }, []);
-
-  useEffect(() => {
-    updateArrows();
-  }, [allIndices, isIndicesLoading, updateArrows]);
-
-  const onMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    const el = bannerRef.current;
-    if (!el) return;
-    isDragging.current  = true;
-    dragStartX.current  = e.pageX - el.getBoundingClientRect().left;
-    dragScrollL.current = el.scrollLeft;
-    el.style.cursor     = "grabbing";
-    el.style.userSelect = "none";
-  }, []);
-
-  const onMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (!isDragging.current || !bannerRef.current) return;
-    e.preventDefault();
-    const x = e.pageX - bannerRef.current.getBoundingClientRect().left;
-    bannerRef.current.scrollLeft = dragScrollL.current - (x - dragStartX.current) * 1.4;
-  }, []);
-
-  const stopDrag = useCallback(() => {
-    isDragging.current = false;
-    if (bannerRef.current) {
-      bannerRef.current.style.cursor     = "grab";
-      bannerRef.current.style.userSelect = "";
-    }
-  }, []);
-
-  const scrollBanner = useCallback((dir: "left" | "right") => {
-    bannerRef.current?.scrollBy({ left: dir === "left" ? -240 : 240, behavior: "smooth" });
-  }, []);
+  const topHoldings = useMemo(
+    () => [...holdings].sort((a, b) => b.marketValue - a.marketValue).slice(0, 3),
+    [holdings]
+  );
+  const previewNews = news.slice(0, NEWS_PREVIEW_COUNT);
 
   return (
     <div className="space-y-4 md:space-y-6">
 
-      {/* ── Combined Index Banner (SET + Global) ──────────────────────── */}
-      <div className="relative -mx-4 md:mx-0">
-        {/* Left arrow — desktop only */}
-        <button
-          onClick={() => scrollBanner("left")}
-          aria-label="Scroll left"
-          title="Scroll left"
-          className={cn(
-            "hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-3 z-10",
-            "h-7 w-7 items-center justify-center rounded-full",
-            "bg-white shadow-md border border-slate-200 text-slate-500",
-            "hover:text-indigo-600 hover:border-indigo-300 transition-all duration-150",
-            showLeft ? "opacity-100" : "opacity-0 pointer-events-none"
-          )}
-        >
-          <ChevronLeft size={15} />
-        </button>
-
-        {/* Scrollable strip */}
-        <div
-          ref={bannerRef}
-          onScroll={updateArrows}
-          onMouseDown={onMouseDown}
-          onMouseMove={onMouseMove}
-          onMouseUp={stopDrag}
-          onMouseLeave={stopDrag}
-          className="flex gap-2 overflow-x-auto pb-1 px-4 md:px-0 scrollbar-hide md:cursor-grab md:active:cursor-grabbing"
-        >
-        {isIndicesLoading
-          ? Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="flex-shrink-0 rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm animate-pulse min-w-[100px] space-y-1.5">
-                <div className="h-2.5 w-16 rounded bg-slate-200" />
-                <div className="h-4 w-20 rounded bg-slate-200" />
-                <div className="h-3 w-12 rounded bg-slate-100" />
-              </div>
-            ))
-          : <>
-              {/* SET indices */}
-              {indices.map((idx) => (
-                <div
-                  key={idx.name}
-                  className="flex-shrink-0 flex flex-col rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm min-w-40"
-                >
-                  <p className="text-[10px] text-slate-400 font-medium whitespace-nowrap mb-0.5">
-                    {INDEX_FLAG[idx.name] ?? "🇹🇭"} {idx.name}
-                  </p>
-                  <p className="text-sm font-bold text-slate-800 tabular-nums">
-                    {formatInteger(idx.value)}
-                  </p>
-                  <div className={`flex items-center gap-0.5 text-[11px] font-semibold mt-0.5 ${getChangeColor(idx.changePercent)}`}>
-                    {idx.changePercent >= 0 ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />}
-                    {Math.abs(idx.changePercent).toFixed(2)}%
-                  </div>
-                </div>
-              ))}
-
-              {/* Divider */}
-              {/* {indices.length > 0 && globalIndices.length > 0 && (
-                <div className="flex-shrink-0 w-px bg-slate-200 self-stretch mx-0.5" />
-              )} */}
-
-              {/* Global / US indices */}
-              {(() => {
-                const items = globalIndices.length > 0 ? globalIndices : GLOBAL_INDEX_META.map((m) => ({ name: m.displayName, value: 0, change: 0, changePercent: 0 }));
-                return items.map((idx) => {
-                  const isForex = idx.name === "USD/THB";
-                  const flag    = INDEX_FLAG[idx.name] ?? "🌍";
-                  const isEmpty = idx.value === 0 && loadingGlobal;
-                  return (
-                    <div
-                      key={idx.name}
-                      className={cn(
-                        "flex-shrink-0 flex flex-col rounded-xl border bg-white px-3 py-2 shadow-sm min-w-40",
-                        isEmpty ? "border-slate-100 animate-pulse" : "border-slate-200"
-                      )}
-                    >
-                      <p className="text-[10px] text-slate-400 font-medium whitespace-nowrap mb-0.5">
-                        {flag} {idx.name}
-                      </p>
-                      {isEmpty ? (
-                        <>
-                          <div className="h-4 w-16 rounded bg-slate-200 mt-0.5" />
-                          <div className="h-3 w-10 rounded bg-slate-100 mt-1" />
-                        </>
-                      ) : (
-                        <>
-                          <p className="text-sm font-bold text-slate-800 tabular-nums">
-                            {isForex ? idx.value.toFixed(2) : formatInteger(idx.value)}
-                          </p>
-                          <div className={`flex items-center gap-0.5 text-[11px] font-semibold mt-0.5 ${getChangeColor(idx.changePercent)}`}>
-                            {idx.changePercent >= 0 ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />}
-                            {Math.abs(idx.changePercent).toFixed(2)}%
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  );
-                });
-              })()}
-
-              {/* Live indicator */}
-              {/* {!isIndicesLoading && allIndices.length > 0 && (
-                <div className="flex-shrink-0 flex items-center self-center ml-1">
-                  <div className="flex items-center gap-1 text-[10px] text-slate-400">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse inline-block" />
-                    Live
-                  </div>
-                </div>
-              )} */}
-              {loadingGlobal && globalIndices.length > 0 && (
-                <div className="flex-shrink-0 flex items-center self-center ml-1">
-                  <RefreshCw size={11} className="text-slate-300 animate-spin" />
-                </div>
-              )}
-            </>
-        }
-        </div>{/* end scrollable strip */}
-
-        {/* Right arrow — desktop only */}
-        <button
-          onClick={() => scrollBanner("right")}
-          aria-label="Scroll right"
-          title="Scroll right"
-          className={cn(
-            "hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-3 z-10",
-            "h-7 w-7 items-center justify-center rounded-full",
-            "bg-white shadow-md border border-slate-200 text-slate-500",
-            "hover:text-indigo-600 hover:border-indigo-300 transition-all duration-150",
-            showRight ? "opacity-100" : "opacity-0 pointer-events-none"
-          )}
-        >
-          <ChevronRight size={15} />
-        </button>
-      </div>{/* end relative wrapper */}
+      {/* ── Promo / Ads Banner ──────────────────────────────────────────── */}
+      <PromoCarousel />
 
       {/* ── Portfolio Summary Stats ──────────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
@@ -288,6 +101,73 @@ export default function DashboardPage() {
           icon={<Wallet size={16} className="text-amber-600" />}
           iconBg="bg-amber-50"
         />
+      </div>
+
+      {/* ── Today's Hot Stocks ───────────────────────────────────────────── */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Flame size={15} className="text-orange-500" />
+            <h2 className="text-sm font-semibold text-slate-700">Today&apos;s Hot Stocks</h2>
+            <span className="text-[10px] font-medium text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+              US Markets
+            </span>
+          </div>
+          <span className="text-[10px] text-slate-400 hidden sm:block">Biggest movers · updated every 2 min</span>
+        </div>
+
+        {/* Horizontal scroll strip */}
+        <div className="flex gap-2.5 overflow-x-auto pb-1 -mx-4 px-4 md:mx-0 md:px-0 scrollbar-hide">
+          {loadingTrending && trendingStocks.length === 0
+            ? Array.from({ length: 8 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="shrink-0 rounded-xl border border-slate-200 bg-white px-3.5 py-3 w-[140px] animate-pulse space-y-2"
+                >
+                  <div className="h-3 w-10 rounded bg-slate-200" />
+                  <div className="h-4 w-20 rounded bg-slate-200" />
+                  <div className="h-3 w-16 rounded bg-slate-100" />
+                  <div className="h-5 w-14 rounded bg-slate-200" />
+                </div>
+              ))
+            : trendingStocks.map((stock) => (
+                <div
+                  key={stock.symbol}
+                  className="shrink-0 flex flex-col rounded-xl border border-slate-200 bg-white px-3.5 py-3 w-[148px] shadow-sm hover:shadow-md hover:border-indigo-200 transition-all"
+                >
+                  {/* Symbol + sector */}
+                  <div className="flex items-center justify-between mb-0.5">
+                    <span className="text-sm font-bold text-slate-800">{stock.symbol}</span>
+                    <span
+                      className={cn(
+                        "text-[9px] font-bold px-1.5 py-0.5 rounded-full",
+                        stock.changePercent >= 0
+                          ? "bg-emerald-50 text-emerald-600"
+                          : "bg-red-50 text-red-500"
+                      )}
+                    >
+                      {stock.changePercent >= 0 ? "▲" : "▼"} {Math.abs(stock.changePercent).toFixed(2)}%
+                    </span>
+                  </div>
+
+                  <p className="text-[10px] text-slate-400 truncate mb-2">{stock.name}</p>
+
+                  {/* Price */}
+                  <p className="text-base font-bold text-slate-900 tabular-nums">
+                    ${stock.price.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+
+                  {/* Change amount */}
+                  <p className={`text-xs font-semibold mt-0.5 tabular-nums ${getChangeColor(stock.changePercent)}`}>
+                    {stock.change >= 0 ? "+" : ""}${Math.abs(stock.change).toFixed(2)}
+                  </p>
+                </div>
+              ))}
+
+          {!loadingTrending && trendingStocks.length === 0 && (
+            <p className="text-sm text-slate-400 py-4">Unable to load trending stocks.</p>
+          )}
+        </div>
       </div>
 
       {/* ── Main Content: News + Sidebar ────────────────────────────────── */}
@@ -350,7 +230,7 @@ export default function DashboardPage() {
                           </p>
                         )}
                       </div>
-                      <ExternalLink size={13} className="flex-shrink-0 text-slate-300 group-hover:text-indigo-500 transition-colors mt-0.5" />
+                      <ExternalLink size={13} className="shrink-0 text-slate-300 group-hover:text-indigo-500 transition-colors mt-0.5" />
                     </a>
                   ))}
                 </div>
@@ -412,7 +292,7 @@ export default function DashboardPage() {
                         <p className="font-semibold text-slate-800 text-sm">{h.symbol}</p>
                         <p className="text-xs text-slate-500 truncate max-w-[130px]">{h.name}</p>
                       </div>
-                      <div className="text-right flex-shrink-0 ml-3">
+                      <div className="text-right shrink-0 ml-3">
                         <p className="text-sm font-medium text-slate-700">{formatCurrency(h.marketValue)}</p>
                         <p className={`text-xs font-semibold ${getChangeColor(h.unrealizedPnLPercent)}`}>
                           {formatPercent(h.unrealizedPnLPercent)}

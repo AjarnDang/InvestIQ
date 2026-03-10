@@ -21,6 +21,17 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Promo carousel progress bar */
+@keyframes progress-bar {
+  from { width: 0%; }
+  to   { width: 100%; }
+}
+.animate-progress-bar {
+  animation-name: progress-bar;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 4px;

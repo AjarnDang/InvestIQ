@@ -136,6 +136,18 @@ export interface WatchlistItem {
   addedAt: string;
 }
 
+// ─── Trending / Hot Stocks ────────────────────────────────────────────────────
+export interface TrendingStock {
+  symbol: string;
+  name: string;
+  sector: string;
+  price: number;
+  change: number;
+  changePercent: number;
+  volume?: number;
+  marketCap?: number;
+}
+
 // ─── News ─────────────────────────────────────────────────────────────────────
 export interface NewsItem {
   id: string;
@@ -161,12 +173,14 @@ export interface MarketState {
   stocks: Stock[];
   indices: MarketIndex[];
   globalIndices: MarketIndex[];
+  trendingStocks: TrendingStock[];
   selectedStock: Stock | null;
   priceHistory: PriceHistory[];
   news: NewsItem[];
   loading: boolean;
   loadingGlobal: boolean;
   loadingNews: boolean;
+  loadingTrending: boolean;
   error: string | null;
 }
 
