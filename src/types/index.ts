@@ -136,6 +136,17 @@ export interface WatchlistItem {
   addedAt: string;
 }
 
+// ─── News ─────────────────────────────────────────────────────────────────────
+export interface NewsItem {
+  id: string;
+  title: string;
+  description: string;
+  url: string;
+  source: string;
+  publishedAt: string;
+  imageUrl?: string;
+}
+
 // ─── Redux State Shapes ───────────────────────────────────────────────────────
 export interface PortfolioState {
   holdings: Holding[];
@@ -149,9 +160,13 @@ export interface PortfolioState {
 export interface MarketState {
   stocks: Stock[];
   indices: MarketIndex[];
+  globalIndices: MarketIndex[];
   selectedStock: Stock | null;
   priceHistory: PriceHistory[];
+  news: NewsItem[];
   loading: boolean;
+  loadingGlobal: boolean;
+  loadingNews: boolean;
   error: string | null;
 }
 

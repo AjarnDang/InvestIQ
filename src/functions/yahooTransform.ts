@@ -1,5 +1,6 @@
 import type { Stock, MarketIndex, PriceHistory } from "@/src/types";
 import { YAHOO_TO_META, INDEX_META } from "@/src/data/sectorMap";
+import { GLOBAL_YAHOO_TO_META } from "@/src/data/globalIndices";
 
 // ─── Yahoo Finance API Response Types ────────────────────────────────────────
 
@@ -76,25 +77,36 @@ export function transformQuotesToStocks(raw: YahooQuoteResponse): Stock[] {
   return stocks;
 }
 
-// ─── Transform: Quotes → MarketIndex[] ───────────────────────────────────────
+// ─── Transform: Quotes → SET MarketIndex[] ───────────────────────────────────
 
 export function transformQuotesToIndices(raw: YahooQuoteResponse): MarketIndex[] {
   const results = raw?.quoteResponse?.result ?? [];
-  const indices: MarketIndex[] = [];
-
-  for (const q of results) {
+  return results.flatMap((q) => {
     const meta = INDEX_META.find((m) => m.yahooSymbol === q.symbol);
-    if (!meta) continue;
-
-    indices.push({
+    if (!meta) return [];
+    return [{
       name:          meta.displayName,
       value:         round2(q.regularMarketPrice ?? 0),
       change:        round2(q.regularMarketChange ?? 0),
       changePercent: round2(q.regularMarketChangePercent ?? 0),
-    });
-  }
+    }];
+  });
+}
 
-  return indices;
+// ─── Transform: Quotes → Global MarketIndex[] (US + Forex) ───────────────────
+
+export function transformQuotesToGlobalIndices(raw: YahooQuoteResponse): MarketIndex[] {
+  const results = raw?.quoteResponse?.result ?? [];
+  return results.flatMap((q) => {
+    const meta = GLOBAL_YAHOO_TO_META[q.symbol];
+    if (!meta) return [];
+    return [{
+      name:          meta.displayName,
+      value:         round2(q.regularMarketPrice ?? 0),
+      change:        round2(q.regularMarketChange ?? 0),
+      changePercent: round2(q.regularMarketChangePercent ?? 0),
+    }];
+  });
 }
 
 // ─── Transform: Chart → PriceHistory[] ───────────────────────────────────────

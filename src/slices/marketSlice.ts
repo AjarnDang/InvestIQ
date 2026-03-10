@@ -3,7 +3,7 @@ import {
   createAsyncThunk,
   type PayloadAction,
 } from "@reduxjs/toolkit";
-import type { MarketState, Stock, PriceHistory } from "@/src/types";
+import type { MarketState, Stock, PriceHistory, NewsItem } from "@/src/types";
 import { initialMarketState } from "@/src/state/initialState";
 
 // ─── Async Thunks ─────────────────────────────────────────────────────────────
@@ -21,6 +21,38 @@ export const fetchMarketData = createAsyncThunk(
         fromCache?: boolean;
       };
       return data;
+    } catch (err) {
+      return rejectWithValue((err as Error).message);
+    }
+  }
+);
+
+/** Fetch US market indices + USD/THB from Yahoo Finance */
+export const fetchGlobalMarket = createAsyncThunk(
+  "market/fetchGlobalMarket",
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await fetch("/api/market/global");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json() as {
+        globalIndices: MarketState["globalIndices"];
+      };
+      return data;
+    } catch (err) {
+      return rejectWithValue((err as Error).message);
+    }
+  }
+);
+
+/** Fetch financial news from RSS feeds */
+export const fetchMarketNews = createAsyncThunk(
+  "market/fetchMarketNews",
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await fetch("/api/news");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json() as { news: NewsItem[] };
+      return data.news;
     } catch (err) {
       return rejectWithValue((err as Error).message);
     }
@@ -81,6 +113,12 @@ const marketSlice = createSlice({
     setIndices(state, action: PayloadAction<MarketState["indices"]>) {
       state.indices = action.payload;
     },
+    setGlobalIndices(state, action: PayloadAction<MarketState["globalIndices"]>) {
+      state.globalIndices = action.payload;
+    },
+    setNews(state, action: PayloadAction<NewsItem[]>) {
+      state.news = action.payload;
+    },
     setError(state, action: PayloadAction<string | null>) {
       state.error = action.payload;
     },
@@ -115,6 +153,34 @@ const marketSlice = createSlice({
         state.loading = false;
         state.error   = action.payload as string;
       });
+
+    // ── fetchGlobalMarket ────────────────────────────────────────────────────
+    builder
+      .addCase(fetchGlobalMarket.pending, (state) => {
+        state.loadingGlobal = true;
+      })
+      .addCase(fetchGlobalMarket.fulfilled, (state, action) => {
+        state.loadingGlobal = false;
+        if (action.payload.globalIndices.length > 0) {
+          state.globalIndices = action.payload.globalIndices;
+        }
+      })
+      .addCase(fetchGlobalMarket.rejected, (state) => {
+        state.loadingGlobal = false;
+      });
+
+    // ── fetchMarketNews ──────────────────────────────────────────────────────
+    builder
+      .addCase(fetchMarketNews.pending, (state) => {
+        state.loadingNews = true;
+      })
+      .addCase(fetchMarketNews.fulfilled, (state, action) => {
+        state.loadingNews = false;
+        state.news        = action.payload;
+      })
+      .addCase(fetchMarketNews.rejected, (state) => {
+        state.loadingNews = false;
+      });
   },
 });
 
@@ -124,6 +190,8 @@ export const {
   setSelectedStock,
   setPriceHistory,
   setIndices,
+  setGlobalIndices,
+  setNews,
   setError,
 } = marketSlice.actions;
 

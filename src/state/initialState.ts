@@ -41,9 +41,13 @@ export const initialPortfolioState: PortfolioState = {
 export const initialMarketState: MarketState = {
   stocks: [],
   indices: [],
+  globalIndices: [],
   selectedStock: null,
   priceHistory: [],
-  loading: true, // true so UI shows skeletons immediately
+  news: [],
+  loading: true,       // skeletons for SET indices/stocks
+  loadingGlobal: true, // skeletons for US indices
+  loadingNews: true,   // skeletons for news feed
   error: null,
 };
 

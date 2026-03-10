@@ -2,40 +2,56 @@
 
 import { useEffect, useRef } from "react";
 import { useAppDispatch, useAppSelector } from "@/src/store/hooks";
-import { fetchMarketData, fetchStockHistory } from "@/src/slices/marketSlice";
+import {
+  fetchMarketData,
+  fetchGlobalMarket,
+  fetchMarketNews,
+  fetchStockHistory,
+} from "@/src/slices/marketSlice";
 import { syncPricesFromMarket as syncPortfolio } from "@/src/slices/portfolioSlice";
 import { syncPricesFromMarket as syncWatchlist } from "@/src/slices/watchlistSlice";
 import type { Stock } from "@/src/types";
 
-const POLL_INTERVAL_MS = 60_000; // refresh live prices every 60 seconds
+const PRICE_POLL_MS  = 60_000;  // refresh SET + US prices every 60 s
+const NEWS_POLL_MS   = 900_000; // refresh news every 15 min
 
-/**
- * Fetches live market data from Yahoo Finance on mount and polls every minute.
- * After every successful fetch, propagates real prices to portfolio and watchlist.
- * Also fetches price history whenever the selected stock changes.
- */
 export function MarketProvider({ children }: { children: React.ReactNode }) {
   const dispatch      = useAppDispatch();
   const selectedStock = useAppSelector((s) => s.market.selectedStock);
-  const intervalRef   = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  async function loadAndSync() {
-    const result = await dispatch(fetchMarketData());
-    if (fetchMarketData.fulfilled.match(result)) {
-      const stocks = result.payload.stocks as Stock[];
+  const priceIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const newsIntervalRef  = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  async function loadPrices() {
+    // Fetch SET stocks + indices and US global indices in parallel
+    const [setResult] = await Promise.all([
+      dispatch(fetchMarketData()),
+      dispatch(fetchGlobalMarket()),
+    ]);
+
+    // Propagate real SET prices to portfolio + watchlist
+    if (fetchMarketData.fulfilled.match(setResult)) {
+      const stocks = setResult.payload.stocks as Stock[];
       dispatch(syncPortfolio(stocks));
       dispatch(syncWatchlist(stocks));
     }
   }
 
-  // Initial fetch + polling
-  useEffect(() => {
-    loadAndSync();
+  async function loadNews() {
+    dispatch(fetchMarketNews());
+  }
 
-    intervalRef.current = setInterval(loadAndSync, POLL_INTERVAL_MS);
+  // Initial fetch of prices + news, then set up polling intervals
+  useEffect(() => {
+    loadPrices();
+    loadNews();
+
+    priceIntervalRef.current = setInterval(loadPrices, PRICE_POLL_MS);
+    newsIntervalRef.current  = setInterval(loadNews,   NEWS_POLL_MS);
 
     return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (priceIntervalRef.current) clearInterval(priceIntervalRef.current);
+      if (newsIntervalRef.current)  clearInterval(newsIntervalRef.current);
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
