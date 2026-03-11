@@ -18,8 +18,10 @@ import { useAppDispatch, useAppSelector } from "@/src/store/hooks";
 import { loginThunk, clearAuthError } from "@/src/slices/authSlice";
 import { getAuthSession } from "@/src/functions/authFunctions";
 import {
-  LOGIN_FEATURE_LIST,
-  LOGIN_PREVIEW_STATS,
+  LOGIN_FEATURE_LIST_EN,
+  LOGIN_FEATURE_LIST_TH,
+  LOGIN_PREVIEW_STATS_EN,
+  LOGIN_PREVIEW_STATS_TH,
   LOGIN_CHART_BARS,
 } from "@/src/data/landingContent";
 import { DEFAULT_DEMO_CREDENTIAL } from "@/src/data/accounts";
@@ -29,7 +31,7 @@ export default function LoginPage() {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const { loading, error, isAuthenticated } = useAppSelector((s) => s.auth);
-  const { t } = useTranslations();
+  const { t, locale } = useTranslations();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -108,8 +110,8 @@ export default function LoginPage() {
           </div>
 
           {/* Feature list */}
-          <ul className="space-y-3">
-            {LOGIN_FEATURE_LIST.map((feat) => (
+            <ul className="space-y-3">
+            {(locale === "th" ? LOGIN_FEATURE_LIST_TH : LOGIN_FEATURE_LIST_EN).map((feat) => (
               <li key={feat} className="flex items-center gap-3 text-slate-300 text-sm">
                 <CheckCircle size={16} className="text-emerald-400 flex-shrink-0" />
                 {feat}
@@ -121,7 +123,7 @@ export default function LoginPage() {
           <div className="rounded-2xl border border-white/10 bg-slate-900/60 backdrop-blur-sm p-5 max-w-sm">
             <p className="text-xs text-slate-500 mb-3 uppercase tracking-wider">Portfolio Summary</p>
             <div className="grid grid-cols-2 gap-3 mb-4">
-              {LOGIN_PREVIEW_STATS.map((s) => (
+              {(locale === "th" ? LOGIN_PREVIEW_STATS_TH : LOGIN_PREVIEW_STATS_EN).map((s) => (
                 <div key={s.label} className="bg-slate-800/60 rounded-lg p-3">
                   <p className="text-[10px] text-slate-500 mb-1">{s.label}</p>
                   <p className={`text-sm font-bold ${s.color}`}>{s.value}</p>

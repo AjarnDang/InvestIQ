@@ -23,16 +23,16 @@ import {
 import { useAppSelector } from "@/src/store/hooks";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
-import { IndexBanner } from "@/components/ui/IndexBanner";
 import { formatInteger, timeAgo } from "@/src/utils/formatters";
 import { getChangeColor, getChangeBgColor, cn } from "@/src/utils/helpers";
 import { GLOBAL_NAME_TO_META } from "@/src/data/globalIndices";
 import { getIndexNavAlias } from "@/src/data/indexAliases";
 import { SET_REGION } from "@/src/data/indices";
-import { LEARN_TOPICS, MOCK_ARTICLES } from "@/src/data/landingContent";
+import { LEARN_TOPICS, LEARN_TOPICS_EN, MOCK_ARTICLES, MOCK_ARTICLES_EN } from "@/src/data/landingContent";
 import { getSourceBadgeClass } from "@/src/data/newsConfig";
+import { useTranslations } from "@/src/i18n/useTranslations";
 
-const NEWS_PREVIEW = 8;
+const NEWS_PREVIEW = 7;
 
 // ── Fear & Greed Gauge ────────────────────────────────────────────────────
 type TrendingStockItem = { changePercent: number };
@@ -50,6 +50,7 @@ function getFGZone(value: number) {
 }
 
 function FearGreedCard({ trendingStocks }: { trendingStocks: TrendingStockItem[] }) {
+  const { t, locale } = useTranslations();
   const value = useMemo(() => {
     if (trendingStocks.length === 0) return 42;
     const gainers = trendingStocks.filter((s) => s.changePercent > 0).length;
@@ -69,8 +70,12 @@ function FearGreedCard({ trendingStocks }: { trendingStocks: TrendingStockItem[]
     <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
       <div className="flex items-center gap-2 px-4 py-3.5 border-b border-slate-100">
         <Gauge size={14} className="text-slate-500" />
-        <h3 className="text-sm font-semibold text-slate-800">Fear &amp; Greed Index</h3>
-        <span className="ml-auto text-[10px] text-slate-400">US Market</span>
+        <h3 className="text-sm font-semibold text-slate-800">
+          {t("home.fearGreed")}
+        </h3>
+        <span className="ml-auto text-[10px] text-slate-400">
+          {locale === "th" ? "ตลาดสหรัฐฯ" : "US Market"}
+        </span>
       </div>
 
       <div className="px-4 py-4">
@@ -111,13 +116,15 @@ function FearGreedCard({ trendingStocks }: { trendingStocks: TrendingStockItem[]
           />
         </div>
         <div className="flex justify-between text-[9px] text-slate-400 mt-1">
-          <span>Fear</span>
-          <span>Neutral</span>
-          <span>Greed</span>
+          <span>{locale === "th" ? "กลัว" : "Fear"}</span>
+          <span>{locale === "th" ? "ปกติ" : "Neutral"}</span>
+          <span>{locale === "th" ? "โลภ" : "Greed"}</span>
         </div>
 
         <p className="text-[10px] text-slate-400 text-center mt-2 leading-relaxed">
-          คำนวณจาก US Trending Stocks · อัปเดตทุก 2 นาที
+          {locale === "th"
+            ? "คำนวณจาก US Trending Stocks · อัปเดตทุก 2 นาที"
+            : "Calculated from US trending stocks · updated every 2 minutes"}
         </p>
       </div>
     </div>
@@ -127,6 +134,7 @@ function FearGreedCard({ trendingStocks }: { trendingStocks: TrendingStockItem[]
 // ── Page ─────────────────────────────────────────────────────────────────────
 export default function HomePage() {
   const router = useRouter();
+  const { t, locale } = useTranslations();
   const { isAuthenticated, user } = useAppSelector((s) => s.auth);
   const {
     indices,
@@ -256,38 +264,49 @@ export default function HomePage() {
               <div className="max-w-lg">
                 <div className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/15 px-3 py-1 text-xs font-semibold text-white mb-3">
                   <Sparkles size={12} />
-                  กองทุนแนะนำประจำสัปดาห์
+                  {locale === "th" ? "กองทุนแนะนำประจำสัปดาห์" : t("home.heroTitle")}
                 </div>
                 <h2 className="text-xl md:text-2xl font-bold text-white leading-snug mb-2">
-                  สรุปทุกกลยุทธ์การลงทุนเด่น
+                  {locale === "th"
+                    ? "สรุปทุกกลยุทธ์การลงทุนเด่น"
+                    : t("home.heroSubtitle")}
                 </h2>
                 <p className="text-sm text-indigo-100 leading-relaxed mb-5">
-                  เพื่อให้คุณไม่พลาดในทุกโอกาสการลงทุน
-                  พร้อมบทวิเคราะห์จากผู้เชี่ยวชาญ อัปเดตทุกสัปดาห์
+                  {locale === "th"
+                    ? "เพื่อให้คุณไม่พลาดในทุกโอกาสการลงทุน พร้อมบทวิเคราะห์จากผู้เชี่ยวชาญ อัปเดตทุกสัปดาห์"
+                    : "So you never miss an opportunity, with updated expert insights every week."}
                 </p>
                 <div className="flex items-center gap-3 flex-wrap">
                   <button className="flex items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-bold text-indigo-700 hover:bg-indigo-50 transition-colors shadow-sm">
-                    คลิกเลย <ChevronRight size={14} />
+                    {locale === "th" ? "คลิกเลย" : t("home.heroCta")} <ChevronRight size={14} />
                   </button>
                   <Link
                     href={isAuthenticated ? "/news" : "/login"}
                     className="text-sm text-white/80 hover:text-white underline underline-offset-2 transition-colors"
                   >
-                    ดูบทความทั้งหมด
+                    {locale === "th" ? "ดูบทความทั้งหมด" : t("home.articles")}
                   </Link>
                 </div>
               </div>
 
               {/* Right: mini stat cards */}
               <div className="hidden md:grid grid-cols-2 gap-3 shrink-0">
-                {[
-                  { label: "กองทุนแนะนำ", value: "12 กองทุน", icon: "🏆" },
-                  { label: "อัปเดตล่าสุด", value: "วันนี้", icon: "🔄" },
-                  { label: "ผลตอบแทนเฉลี่ย", value: "+8.4%", icon: "📈" },
-                  { label: "ผู้ติดตาม", value: "12,000+", icon: "👥" },
-                ].map(({ label, value, icon }) => (
+                {(locale === "th"
+                  ? [
+                      { label: "กองทุนแนะนำ",     value: "12 กองทุน", icon: "🏆" },
+                      { label: "อัปเดตล่าสุด",     value: "วันนี้",     icon: "🔄" },
+                      { label: "ผลตอบแทนเฉลี่ย", value: "+8.4%",     icon: "📈" },
+                      { label: "ผู้ติดตาม",       value: "12,000+",   icon: "👥" },
+                    ]
+                  : [
+                      { label: "Featured funds",     value: "12 funds",     icon: "🏆" },
+                      { label: "Last updated",       value: "Today",        icon: "🔄" },
+                      { label: "Average return",     value: "+8.4%",        icon: "📈" },
+                      { label: "Followers",          value: "12,000+",      icon: "👥" },
+                    ]
+                ).map(({ label, value, icon }) => (
                   <div
-                    key={label}
+                    key={`${label}-${value}`}
                     className="rounded-xl bg-white/15 backdrop-blur-sm border border-white/20 px-4 py-3 text-center"
                   >
                     <p className="text-lg">{icon}</p>
@@ -311,11 +330,11 @@ export default function HomePage() {
                   <div className="flex items-center gap-2">
                     <Newspaper size={15} className="text-slate-500" />
                     <h2 className="text-base font-bold text-slate-800">
-                      ข่าวการเงินล่าสุด
+                      {t("home.news")}
                     </h2>
                     {loadingNews && news.length === 0 && (
                       <span className="text-[10px] text-slate-400 animate-pulse">
-                        กำลังโหลด...
+                        {locale === "th" ? "กำลังโหลด..." : t("common.loading")}
                       </span>
                     )}
                   </div>
@@ -323,7 +342,7 @@ export default function HomePage() {
                     href={isAuthenticated ? "/news" : "/login"}
                     className="text-xs font-medium text-indigo-600 hover:text-indigo-700 flex items-center gap-0.5"
                   >
-                    ดูทั้งหมด <ArrowUpRight size={12} />
+                    {t("home.newsViewAll")} <ArrowUpRight size={12} />
                   </Link>
                 </div>
 
@@ -344,7 +363,7 @@ export default function HomePage() {
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {previewNews.map((item, i) => (
+                    {previewNews.map((item, i,) => (
                       <a
                         key={item.id}
                         href={item.url}
@@ -405,22 +424,20 @@ export default function HomePage() {
                     <div className="flex items-center gap-2">
                       <BarChart2 size={15} className="text-indigo-500" />
                       <h2 className="text-base font-bold text-slate-800">
-                        ดัชนีหลัก
+                        {t("home.mainIndices")}
                       </h2>
                       <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
-                        {allIndexRows.length} ดัชนี
+                        {allIndexRows.length} {locale === "th" ? "ดัชนี" : "indices"}
                       </span>
                     </div>
                     {/* Region filter tabs */}
                     <div className="flex rounded-lg border border-slate-200 overflow-hidden text-xs">
-                      {(
-                        [
-                          { key: "all", label: "ทั้งหมด" },
-                          { key: "asia", label: "เอเชีย" },
-                          { key: "us", label: "สหรัฐ" },
-                          { key: "europe", label: "ยุโรป" },
-                        ] as const
-                      ).map(({ key, label }, i) => (
+                      {([
+                        { key: "all",    label: locale === "th" ? "ทั้งหมด" : "All" },
+                        { key: "asia",   label: locale === "th" ? "เอเชีย" : "Asia" },
+                        { key: "us",     label: locale === "th" ? "สหรัฐ" : "US" },
+                        { key: "europe", label: locale === "th" ? "ยุโรป" : "Europe" },
+                      ] as const).map(({ key, label }, i) => (
                         <button
                           key={key}
                           onClick={() => setIndicesTab(key)}
@@ -534,7 +551,7 @@ export default function HomePage() {
 
                         {filteredRows.length === 0 && (
                           <p className="py-10 text-center text-sm text-slate-400">
-                            ไม่มีข้อมูล
+                            {locale === "th" ? "ไม่มีข้อมูล" : t("common.noData")}
                           </p>
                         )}
                       </div>
@@ -542,13 +559,13 @@ export default function HomePage() {
 
                     <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/30 flex items-center justify-between">
                       <span className="text-[10px] text-slate-400">
-                        อัปเดตทุก 60 วินาที
+                        {locale === "th" ? "อัปเดตทุก 60 วินาที" : "Updated every 60 seconds"}
                       </span>
                       <Link
                         href={isAuthenticated ? "/market" : "/login"}
                         className="text-xs font-medium text-indigo-600 hover:text-indigo-700 flex items-center gap-0.5"
                       >
-                        ดูตลาดทั้งหมด <ArrowUpRight size={12} />
+                        {locale === "th" ? "ดูตลาดทั้งหมด" : "View all markets"} <ArrowUpRight size={12} />
                       </Link>
                     </div>
                   </div>
@@ -560,14 +577,14 @@ export default function HomePage() {
                     <div className="flex items-center gap-2">
                       <Flame size={15} className="text-orange-500" />
                       <h2 className="text-base font-bold text-slate-800">
-                        Today&apos;s Hot Stocks
+                        {t("home.hotStocks")}
                       </h2>
                       <span className="text-[10px] font-medium text-white bg-slate-400 px-2 py-0.5 rounded-full hidden sm:inline">
-                        US Markets
+                        {t("home.hotStocksUS")}
                       </span>
                     </div>
                     <span className="text-[10px] text-slate-400 hidden sm:block">
-                      Biggest movers · every 2 min
+                      {locale === "th" ? "หุ้นเคลื่อนไหวมากที่สุด · อัปเดตทุก 2 นาที" : "Biggest movers · every 2 min"}
                     </span>
                   </div>
 
@@ -714,19 +731,19 @@ export default function HomePage() {
                     <div className="flex items-center gap-2">
                       <BookOpen size={15} className="text-indigo-500" />
                       <h2 className="text-base font-bold text-slate-800">
-                        เรียนรู้การลงทุน
+                        {t("home.learn")}
                       </h2>
                       <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
-                        สำหรับผู้เริ่มต้น
+                        {locale === "th" ? "สำหรับผู้เริ่มต้น" : t("home.learnSubtitle")}
                       </span>
                     </div>
                     <button className="text-xs font-medium text-indigo-600 hover:text-indigo-700 flex items-center gap-0.5">
-                      ดูหลักสูตรทั้งหมด <ArrowUpRight size={12} />
+                      {locale === "th" ? "ดูหลักสูตรทั้งหมด" : t("home.learn")} <ArrowUpRight size={12} />
                     </button>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {LEARN_TOPICS.map((topic) => (
+                    {(locale === "th" ? LEARN_TOPICS : LEARN_TOPICS_EN).map((topic) => (
                       <button
                         key={topic.title}
                         className="group text-left bg-white rounded-2xl border border-slate-200 p-5 hover:shadow-md hover:border-indigo-200 transition-all"
@@ -744,7 +761,7 @@ export default function HomePage() {
                           {topic.desc}
                         </p>
                         <div className="mt-3 flex items-center gap-1 text-xs text-indigo-600 font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                          อ่านเพิ่มเติม <ChevronRight size={12} />
+                          {locale === "th" ? "อ่านเพิ่มเติม" : t("common.readMore")} <ChevronRight size={12} />
                         </div>
                       </button>
                     ))}
@@ -757,16 +774,16 @@ export default function HomePage() {
                     <div className="flex items-center gap-2">
                       <Newspaper size={15} className="text-slate-500" />
                       <h2 className="text-base font-bold text-slate-800">
-                        บทความล่าสุด
+                        {t("home.articles")}
                       </h2>
                     </div>
                     <button className="text-xs font-medium text-indigo-600 hover:text-indigo-700 flex items-center gap-0.5">
-                      ดูบทความทั้งหมด <ArrowUpRight size={12} />
+                      {locale === "th" ? "ดูบทความทั้งหมด" : t("home.newsViewAll")} <ArrowUpRight size={12} />
                     </button>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {MOCK_ARTICLES.map((article) => (
+                    {(locale === "th" ? MOCK_ARTICLES : MOCK_ARTICLES_EN).map((article) => (
                       <div
                         key={article.id}
                         className="group bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-md hover:border-indigo-200 transition-all cursor-pointer"
@@ -819,7 +836,7 @@ export default function HomePage() {
                   <div className="flex items-center gap-2 px-4 py-3.5 border-b border-slate-100">
                     <Globe2 size={14} className="text-slate-500" />
                     <h3 className="text-sm font-semibold text-slate-800">
-                      Global Markets
+                      {t("home.globalMarkets")}
                     </h3>
                   </div>
                   {globalIndices.length === 0 ? (
@@ -875,7 +892,7 @@ export default function HomePage() {
                 <div className="space-y-4">
                   <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
                     <h3 className="text-sm font-semibold text-slate-800 mb-3">
-                      Sector Leaders
+                      {locale === "th" ? "กลุ่มอุตสาหกรรมเด่น" : "Sector Leaders"}
                     </h3>
                     <div className="space-y-2.5">
                       {[
@@ -911,32 +928,38 @@ export default function HomePage() {
 
                   <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
                     <h3 className="text-sm font-semibold text-slate-800 mb-1">
-                      Market Hours (ET)
+                      {locale === "th" ? "เวลาเปิด–ปิดตลาด (ET)" : "Market Hours (ET)"}
                     </h3>
                     <p className="text-xs text-slate-500 mb-3">
-                      New York Stock Exchange
+                      {locale === "th" ? "ตลาดหลักทรัพย์นิวยอร์ก" : "New York Stock Exchange"}
                     </p>
                     <div className="space-y-1.5 text-xs">
                       <div className="flex justify-between">
-                        <span className="text-slate-500">Pre-Market</span>
+                        <span className="text-slate-500">
+                          {locale === "th" ? "ช่วงก่อนเปิดตลาด" : "Pre-Market"}
+                        </span>
                         <span className="text-slate-700 font-medium">
                           04:00 – 09:30
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-slate-500">Regular</span>
+                        <span className="text-slate-500">
+                          {locale === "th" ? "ช่วงปกติ" : "Regular"}
+                        </span>
                         <span className="text-emerald-600 font-bold">
                           09:30 – 16:00
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-slate-500">After Hours</span>
+                        <span className="text-slate-500">
+                          {locale === "th" ? "ช่วงหลังปิดตลาด" : "After Hours"}
+                        </span>
                         <span className="text-slate-700 font-medium">
                           16:00 – 20:00
                         </span>
                       </div>
                       <p className="text-[10px] text-slate-400 pt-1">
-                        UTC+7: +11 ชั่วโมง (ฤดูหนาว)
+                        {locale === "th" ? "UTC+7: เร็วกว่าตลาดนิวยอร์ก 11 ชั่วโมง (ฤดูหนาว)" : "UTC+7: +11 hours ahead of New York (winter)"}
                       </p>
                     </div>
                   </div>
@@ -956,13 +979,19 @@ export default function HomePage() {
                 <div className="text-center md:text-left">
                   <h2 className="text-2xl font-bold text-white mb-2">
                     {isAuthenticated
-                      ? `พร้อมลงทุนแล้ว, ${user?.name?.split(" ")[0] ?? "Investor"}?`
-                      : "เริ่มลงทุนอย่างชาญฉลาด"}
+                      ? (locale === "th"
+                          ? `พร้อมลงทุนแล้ว, ${user?.name?.split(" ")[0] ?? "นักลงทุน"}?`
+                          : `Ready to invest, ${user?.name?.split(" ")[0] ?? "Investor"}?`)
+                      : (locale === "th" ? "เริ่มลงทุนอย่างชาญฉลาด" : t("home.ctaTitle"))}
                   </h2>
                   <p className="text-slate-300 text-sm leading-relaxed max-w-md">
                     {isAuthenticated
-                      ? "ไปดู Portfolio และตลาดของคุณได้เลย เพื่อไม่พลาดทุกโอกาสการลงทุน"
-                      : "ติดตามพอร์ต Real-time, วิเคราะห์หุ้น และรับ Price Alerts ฟรีตลอดชีพ"}
+                      ? (locale === "th"
+                          ? "ไปดู Portfolio และตลาดของคุณได้เลย เพื่อไม่พลาดทุกโอกาสการลงทุน"
+                          : "Jump into your dashboard and portfolio so you never miss an opportunity.")
+                      : (locale === "th"
+                          ? "ติดตามพอร์ต Real-time, วิเคราะห์หุ้น และรับ Price Alerts ฟรีตลอดชีพ"
+                          : t("home.ctaSubtitle"))}
                   </p>
                 </div>
                 <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0">
@@ -971,7 +1000,7 @@ export default function HomePage() {
                       href="/dashboard"
                       className="flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 px-6 py-3 text-sm font-bold text-white transition-colors"
                     >
-                      <LayoutDashboard size={15} /> ไปที่ Dashboard
+                      <LayoutDashboard size={15} /> {locale === "th" ? "ไปที่ Dashboard" : t("auth.dashboard")}
                     </Link>
                   ) : (
                     <>
@@ -979,13 +1008,13 @@ export default function HomePage() {
                         href="/login"
                         className="rounded-xl bg-indigo-600 hover:bg-indigo-500 px-6 py-3 text-sm font-bold text-white transition-colors"
                       >
-                        สมัครฟรีทันที →
+                        {locale === "th" ? "สมัครฟรีทันที →" : t("home.ctaButton")}
                       </Link>
                       <Link
                         href="/login"
                         className="rounded-xl border border-slate-600 hover:border-slate-400 px-6 py-3 text-sm font-medium text-slate-300 hover:text-white transition-colors"
                       >
-                        ล็อกอิน
+                        {locale === "th" ? "ล็อกอิน" : t("auth.login")}
                       </Link>
                     </>
                   )}
