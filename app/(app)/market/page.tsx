@@ -21,11 +21,13 @@ import {
 } from "@/src/utils/formatters";
 import { getGainersAndLosers } from "@/src/functions/marketFunctions";
 import { getChangeColor, getChangeBgColor, cn } from "@/src/utils/helpers";
+import { useTranslations } from "@/src/i18n/useTranslations";
 
 const SECTORS = ["ALL", "Energy", "Banking", "Technology", "Industrial", "Consumer", "Finance"];
 
 export default function MarketPage() {
   const router = useRouter();
+  const { t, locale } = useTranslations();
   const { stocks, indices, globalIndices, loading, loadingGlobal } = useAppSelector((s) => s.market);
 
   const [search,      setSearch]      = useState("");
@@ -71,12 +73,12 @@ export default function MarketPage() {
           {loading ? (
             <>
               <span className="inline-block h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
-              Refreshing...
+              {locale === "th" ? "กำลังรีเฟรช..." : "Refreshing..."}
             </>
           ) : (
             <>
               <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
-              Live · updates every 60s
+              {locale === "th" ? "ข้อมูลสด · อัปเดตทุก 60 วิ" : "Live · updates every 60s"}
             </>
           )}
         </div>
@@ -101,7 +103,7 @@ export default function MarketPage() {
           <CardHeader>
             <div className="flex items-center gap-2">
               <TrendingUp size={15} className="text-emerald-500" />
-              <CardTitle>Top Gainers</CardTitle>
+              <CardTitle>{t("market.topGainers")}</CardTitle>
             </div>
           </CardHeader>
           <CardContent className="pt-2 space-y-1">
@@ -139,7 +141,7 @@ export default function MarketPage() {
           <CardHeader>
             <div className="flex items-center gap-2">
               <TrendingDown size={15} className="text-red-500" />
-              <CardTitle>Top Losers</CardTitle>
+              <CardTitle>{t("market.topLosers")}</CardTitle>
             </div>
           </CardHeader>
           <CardContent className="pt-2 space-y-1">
@@ -181,7 +183,7 @@ export default function MarketPage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <BarChart2 size={15} className="text-slate-500" />
-                <CardTitle>Stock Screener</CardTitle>
+                <CardTitle>{locale === "th" ? "คัดกรองหุ้น" : "Stock Screener"}</CardTitle>
               </div>
               {/* Mobile filter toggle */}
               <button
@@ -194,7 +196,7 @@ export default function MarketPage() {
                 )}
               >
                 <SlidersHorizontal size={13} />
-                Filters
+                {t("common.filter")}
               </button>
             </div>
 
@@ -205,7 +207,7 @@ export default function MarketPage() {
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search stocks..."
+                  placeholder={t("market.searchStocks")}
                   className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 pl-8 pr-3 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
@@ -232,7 +234,7 @@ export default function MarketPage() {
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search..."
+                  placeholder={t("common.search")}
                   className="h-8 w-44 rounded-lg border border-slate-200 bg-slate-50 pl-8 pr-3 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
@@ -306,7 +308,7 @@ export default function MarketPage() {
               </div>
             )}
             {!loading && filtered.length === 0 && (
-              <p className="py-12 text-center text-sm text-slate-400">No stocks found</p>
+              <p className="py-12 text-center text-sm text-slate-400">{t("market.noResults")}</p>
             )}
           </div>
 
@@ -316,14 +318,14 @@ export default function MarketPage() {
               <thead>
                 <tr className="border-b border-slate-200">
                   {[
-                    { key: "symbol",        label: "Symbol",   align: "left"  },
-                    { key: "price",         label: "Price",    align: "right" },
-                    { key: "change",        label: "Change",   align: "right" },
-                    { key: "changePercent", label: "% Change", align: "right" },
-                    { key: "volume",        label: "Volume",   align: "right" },
-                    { key: "marketCap",     label: "Mkt Cap",  align: "right" },
-                    { key: "peRatio",       label: "P/E",      align: "right" },
-                    { key: "dividendYield", label: "Div %",    align: "right" },
+                    { key: "symbol",        label: locale === "th" ? "สัญลักษณ์" : "Symbol", align: "left"  },
+                    { key: "price",         label: t("common.price"),          align: "right" },
+                    { key: "change",        label: t("common.change"),         align: "right" },
+                    { key: "changePercent", label: t("common.changePercent"),  align: "right" },
+                    { key: "volume",        label: t("common.volume"),         align: "right" },
+                    { key: "marketCap",     label: t("market.marketCap"),      align: "right" },
+                    { key: "peRatio",       label: t("market.peRatio"),        align: "right" },
+                    { key: "dividendYield", label: t("market.dividend"),       align: "right" },
                   ].map((col) => (
                     <th
                       key={col.key}
@@ -406,7 +408,7 @@ export default function MarketPage() {
                 {!loading && filtered.length === 0 && (
                   <tr>
                     <td colSpan={9} className="py-12 text-center text-sm text-slate-400">
-                      No stocks found
+                      {t("market.noResults")}
                     </td>
                   </tr>
                 )}

@@ -13,11 +13,13 @@ import { fetchMarketNews } from "@/src/slices/marketSlice";
 import { timeAgo } from "@/src/utils/formatters";
 import { cn } from "@/src/utils/helpers";
 import { getSourceBadgeClass, getSourceAccentClass } from "@/src/data/newsConfig";
+import { useTranslations } from "@/src/i18n/useTranslations";
 
 const ALL_SOURCES = ["All", "MarketWatch", "CNBC", "Reuters", "Bangkok Post"];
 
 export default function NewsPage() {
   const dispatch = useAppDispatch();
+  const { t, locale } = useTranslations();
   const { news, loadingNews } = useAppSelector((s) => s.market);
   const [activeSource, setActiveSource] = useState("All");
 
@@ -32,9 +34,9 @@ export default function NewsPage() {
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-slate-800">Financial News</h1>
+          <h1 className="text-xl font-bold text-slate-800">{t("news.title")}</h1>
           <p className="text-sm text-slate-500 mt-0.5">
-            ข่าวการเงินล่าสุดจากตลาดทั่วโลก
+            {locale === "th" ? "ข่าวการเงินล่าสุดจากตลาดทั่วโลก" : "Latest financial news from global markets"}
           </p>
         </div>
         <button
@@ -43,7 +45,7 @@ export default function NewsPage() {
           className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50"
         >
           <RefreshCw size={12} className={loadingNews ? "animate-spin" : ""} />
-          Refresh
+          {locale === "th" ? "รีเฟรช" : "Refresh"}
         </button>
       </div>
 
@@ -70,7 +72,7 @@ export default function NewsPage() {
           </button>
         ))}
         <span className="ml-auto shrink-0 text-xs text-slate-400">
-          {filtered.length} บทความ
+          {filtered.length} {locale === "th" ? "บทความ" : "articles"}
         </span>
       </div>
 
@@ -168,8 +170,8 @@ export default function NewsPage() {
           </div>
           <p className="text-sm text-slate-500 text-center">
             {news.length === 0
-              ? "ไม่สามารถโหลดข่าวได้ กรุณาตรวจสอบการเชื่อมต่อ"
-              : `ไม่มีบทความจาก ${activeSource}`}
+              ? (locale === "th" ? "ไม่สามารถโหลดข่าวได้ กรุณาตรวจสอบการเชื่อมต่อ" : "Could not load news. Please check your connection.")
+              : (locale === "th" ? `ไม่มีบทความจาก ${activeSource}` : `No articles from ${activeSource}`)}
           </p>
         </div>
       )}

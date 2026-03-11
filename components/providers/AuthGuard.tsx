@@ -8,20 +8,20 @@ import { rehydrateAuth, setInitialized } from "@/src/slices/authSlice";
 import { getAuthSession } from "@/src/functions/authFunctions";
 import { TrendingUp, Lock, LogIn } from "lucide-react";
 import { PROFILE_NAV_ITEMS } from "@/src/data/navigation";
+import { useTranslations } from "@/src/i18n/useTranslations";
 
 interface AuthGuardProps {
   children: React.ReactNode;
 }
 
-// Only paths from PROFILE_NAV_ITEMS require authentication
 const PROTECTED_PATHS = PROFILE_NAV_ITEMS.map((item) => item.href);
 
 export function AuthGuard({ children }: AuthGuardProps) {
   const pathname  = usePathname();
   const dispatch  = useAppDispatch();
+  const { t, locale } = useTranslations();
   const { isAuthenticated, initializing } = useAppSelector((s) => s.auth);
 
-  // Rehydrate auth from localStorage on first mount (runs for all routes)
   useEffect(() => {
     const session = getAuthSession();
     if (session) {
@@ -31,17 +31,13 @@ export function AuthGuard({ children }: AuthGuardProps) {
     }
   }, [dispatch]);
 
-  // Is the current path one that requires a login?
   const requiresAuth = PROTECTED_PATHS.some(
     (p) => pathname === p || pathname.startsWith(p + "/"),
   );
 
-  // ── Public path — always render, no auth check ──────────────────────────
-  if (!requiresAuth) {
-    return <>{children}</>;
-  }
+  if (!requiresAuth) return <>{children}</>;
 
-  // ── Protected path: show spinner while session is being rehydrated ───────
+  // ── Protected path: spinner while session rehydrates ─────────────────────
   if (initializing) {
     return (
       <div className="flex min-h-[60vh] w-full items-center justify-center">
@@ -59,51 +55,48 @@ export function AuthGuard({ children }: AuthGuardProps) {
     );
   }
 
-  // ── Protected path: not logged in — show inline gate (no redirect) ───────
+  // ── Protected path: not logged in — show inline gate ────────────────────
   if (!isAuthenticated) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center px-4">
         <div className="text-center max-w-sm w-full">
-          {/* Icon */}
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-50 border border-indigo-100 mx-auto mb-5">
             <Lock size={26} className="text-indigo-500" />
           </div>
 
-          {/* Message */}
           <h2 className="text-xl font-bold text-slate-800 mb-2">
-            กรุณาเข้าสู่ระบบ
+            {locale === "th" ? "กรุณาเข้าสู่ระบบ" : "Login Required"}
           </h2>
           <p className="text-sm text-slate-500 leading-relaxed mb-7">
-            หน้านี้ต้องการการเข้าสู่ระบบก่อนเข้าใช้งาน
-            <br />
-            กรุณา Login เพื่อเข้าถึงข้อมูลส่วนตัวของคุณ
+            {locale === "th"
+              ? <>หน้านี้ต้องการการเข้าสู่ระบบก่อนเข้าใช้งาน<br />กรุณา Login เพื่อเข้าถึงข้อมูลส่วนตัวของคุณ</>
+              : <>This page requires you to be logged in.<br />Please sign in to access your personal data.</>
+            }
           </p>
 
-          {/* Actions */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <Link
               href="/login"
               className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 px-6 py-2.5 text-sm font-bold text-white transition-colors shadow-sm"
             >
               <LogIn size={15} />
-              เข้าสู่ระบบ
+              {t("auth.login")}
             </Link>
             <Link
               href="/home"
               className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-6 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
             >
-              กลับหน้าหลัก
+              {locale === "th" ? "กลับหน้าหลัก" : t("common.back")}
             </Link>
           </div>
 
-          {/* Divider hint */}
           <p className="text-xs text-slate-400 mt-6">
-            ยังไม่มีบัญชี?{" "}
+            {locale === "th" ? "ยังไม่มีบัญชี? " : "Don't have an account? "}
             <Link
               href="/login"
               className="text-indigo-600 hover:text-indigo-700 font-medium underline underline-offset-2"
             >
-              สมัครสมาชิกฟรี
+              {locale === "th" ? "สมัครสมาชิกฟรี" : t("auth.register")}
             </Link>
           </p>
         </div>
@@ -111,6 +104,5 @@ export function AuthGuard({ children }: AuthGuardProps) {
     );
   }
 
-  // ── Authenticated — render the protected page ─────────────────────────
   return <>{children}</>;
 }

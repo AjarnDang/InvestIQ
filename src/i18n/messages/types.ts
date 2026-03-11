@@ -253,4 +253,29 @@ export interface Messages {
     copyright: string;
     disclaimer: string;
   };
+
+  login: {
+    title:           string;
+    subtitle:        string;
+    heroTitle:       string;
+    heroSubtitle:    string;
+    emailLabel:      string;
+    emailPlaceholder: string;
+    passwordLabel:   string;
+    rememberMe:      string;
+    forgotPassword:  string;
+    signIn:          string;
+    signingIn:       string;
+    demoHint:        string;
+    demoCredentials: string;
+    backToHome:      string;
+    noAccount:       string;
+    registerFree:    string;
+    demoOnly:        string;
+    learnMore:       string;
+    errorEmail:      string;
+    errorEmailFormat: string;
+    errorPassword:   string;
+    errorPasswordLen: string;
+  };
 }

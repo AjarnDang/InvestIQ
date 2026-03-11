@@ -25,100 +25,101 @@ import {
 } from "@/src/utils/formatters";
 import { getChangeColor, cn } from "@/src/utils/helpers";
 import { ProfileTabsBar } from "@/components/layout/ProfileTabsBar";
-
-// ── Holdings table columns ────────────────────────────────────────────────────
-const columns: TableColumn<Holding & Record<string, unknown>>[] = [
-  {
-    key: "symbol",
-    label: "Symbol",
-    render: (_, row) => (
-      <div>
-        <p className="font-semibold text-slate-800">{row.symbol}</p>
-        <p className="text-xs text-slate-500 max-w-[140px] truncate">{row.name}</p>
-      </div>
-    ),
-  },
-  {
-    key: "sector",
-    label: "Sector",
-    render: (v) => (
-      <Badge variant="default" className="text-xs whitespace-nowrap">
-        {v as string}
-      </Badge>
-    ),
-  },
-  {
-    key: "quantity",
-    label: "Qty",
-    align: "right",
-    sortable: true,
-    render: (v) => formatInteger(v as number),
-  },
-  {
-    key: "avgCost",
-    label: "Avg Cost",
-    align: "right",
-    sortable: true,
-    render: (v) => `฿${(v as number).toFixed(2)}`,
-  },
-  {
-    key: "currentPrice",
-    label: "Price",
-    align: "right",
-    sortable: true,
-    render: (v) => `฿${(v as number).toFixed(2)}`,
-  },
-  {
-    key: "marketValue",
-    label: "Market Value",
-    align: "right",
-    sortable: true,
-    render: (v) => formatCurrency(v as number),
-  },
-  {
-    key: "unrealizedPnL",
-    label: "P&L",
-    align: "right",
-    sortable: true,
-    render: (v, row) => (
-      <div className="text-right">
-        <p className={`font-semibold ${getChangeColor(v as number)}`}>
-          {(v as number) >= 0 ? "+" : ""}{formatCurrency(v as number)}
-        </p>
-        <p className={`text-xs ${getChangeColor(row.unrealizedPnLPercent as number)}`}>
-          {formatPercent(row.unrealizedPnLPercent as number)}
-        </p>
-      </div>
-    ),
-  },
-  {
-    key: "weight",
-    label: "Weight",
-    align: "right",
-    sortable: true,
-    render: (v, row) => (
-      <div className="flex items-center justify-end gap-2">
-        <span className="text-slate-600">{(v as number).toFixed(1)}%</span>
-        <div className="w-12 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-indigo-500 rounded-full"
-            style={{ width: `${Math.min(row.weight as number, 100)}%` }}
-          />
-        </div>
-      </div>
-    ),
-  },
-];
+import { useTranslations } from "@/src/i18n/useTranslations";
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const router = useRouter();
+  const { t, locale } = useTranslations();
   const { summary, holdings, performance, allocation } = useAppSelector((s) => s.portfolio);
   const [tab, setTab] = useState<"overview" | "holdings">("overview");
 
   const tabs = [
-    { key: "overview" as const,  label: "Overview"  },
-    { key: "holdings" as const,  label: "Holdings"  },
+    { key: "overview" as const, label: locale === "th" ? "ภาพรวม" : "Overview"  },
+    { key: "holdings" as const, label: t("dashboard.holdings")                   },
+  ];
+
+  const columns: TableColumn<Holding & Record<string, unknown>>[] = [
+    {
+      key: "symbol",
+      label: locale === "th" ? "สัญลักษณ์" : "Symbol",
+      render: (_, row) => (
+        <div>
+          <p className="font-semibold text-slate-800">{row.symbol}</p>
+          <p className="text-xs text-slate-500 max-w-[140px] truncate">{row.name}</p>
+        </div>
+      ),
+    },
+    {
+      key: "sector",
+      label: t("dashboard.sector"),
+      render: (v) => (
+        <Badge variant="default" className="text-xs whitespace-nowrap">
+          {v as string}
+        </Badge>
+      ),
+    },
+    {
+      key: "quantity",
+      label: locale === "th" ? "จำนวน" : "Qty",
+      align: "right",
+      sortable: true,
+      render: (v) => formatInteger(v as number),
+    },
+    {
+      key: "avgCost",
+      label: t("dashboard.avgCost"),
+      align: "right",
+      sortable: true,
+      render: (v) => `฿${(v as number).toFixed(2)}`,
+    },
+    {
+      key: "currentPrice",
+      label: t("dashboard.currentPrice"),
+      align: "right",
+      sortable: true,
+      render: (v) => `฿${(v as number).toFixed(2)}`,
+    },
+    {
+      key: "marketValue",
+      label: locale === "th" ? "มูลค่าตลาด" : "Market Value",
+      align: "right",
+      sortable: true,
+      render: (v) => formatCurrency(v as number),
+    },
+    {
+      key: "unrealizedPnL",
+      label: "P&L",
+      align: "right",
+      sortable: true,
+      render: (v, row) => (
+        <div className="text-right">
+          <p className={`font-semibold ${getChangeColor(v as number)}`}>
+            {(v as number) >= 0 ? "+" : ""}{formatCurrency(v as number)}
+          </p>
+          <p className={`text-xs ${getChangeColor(row.unrealizedPnLPercent as number)}`}>
+            {formatPercent(row.unrealizedPnLPercent as number)}
+          </p>
+        </div>
+      ),
+    },
+    {
+      key: "weight",
+      label: t("dashboard.weight"),
+      align: "right",
+      sortable: true,
+      render: (v, row) => (
+        <div className="flex items-center justify-end gap-2">
+          <span className="text-slate-600">{(v as number).toFixed(1)}%</span>
+          <div className="w-12 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-indigo-500 rounded-full"
+              style={{ width: `${Math.min(row.weight as number, 100)}%` }}
+            />
+          </div>
+        </div>
+      ),
+    },
   ];
 
   return (
@@ -128,24 +129,24 @@ export default function DashboardPage() {
       {/* ── Portfolio Summary Stats ──────────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
         <StatCard
-          title="Total Value"
+          title={t("dashboard.totalValue")}
           value={formatCurrency(summary.totalValue)}
           change={summary.dailyPnLPercent}
-          changeLabel="today"
+          changeLabel={t("common.today")}
           icon={<Wallet size={16} className="text-indigo-600" />}
           iconBg="bg-indigo-50"
         />
         <StatCard
-          title="Total Cost"
+          title={locale === "th" ? "ต้นทุนรวม" : "Total Cost"}
           value={formatCurrency(summary.totalCost)}
           icon={<PieChartIcon size={16} className="text-slate-500" />}
           iconBg="bg-slate-50"
         />
         <StatCard
-          title="Total Return"
+          title={t("dashboard.totalReturn")}
           value={formatCurrency(summary.totalPnL)}
           change={summary.totalPnLPercent}
-          changeLabel="all time"
+          changeLabel={locale === "th" ? "ทั้งหมด" : "all time"}
           icon={
             summary.totalPnL >= 0
               ? <TrendingUp size={16} className="text-emerald-600" />
@@ -155,10 +156,10 @@ export default function DashboardPage() {
           valueClassName={summary.totalPnL >= 0 ? "text-emerald-600" : "text-red-600"}
         />
         <StatCard
-          title="Daily P&L"
+          title={t("dashboard.dayChange")}
           value={formatCurrency(summary.dailyPnL)}
           change={summary.dailyPnLPercent}
-          changeLabel="vs yesterday"
+          changeLabel={locale === "th" ? "เทียบเมื่อวาน" : "vs yesterday"}
           icon={<Activity size={16} className="text-blue-600" />}
           iconBg="bg-blue-50"
           valueClassName={summary.dailyPnL >= 0 ? "text-emerald-600" : "text-red-600"}
@@ -168,13 +169,13 @@ export default function DashboardPage() {
       {/* Second stat row: total holdings + cash */}
       <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-2 lg:max-w-sm">
         <StatCard
-          title="Holdings"
-          value={`${holdings.length} stocks`}
+          title={t("dashboard.holdings")}
+          value={`${holdings.length} ${locale === "th" ? "หุ้น" : "stocks"}`}
           icon={<Layers size={16} className="text-blue-600" />}
           iconBg="bg-blue-50"
         />
         <StatCard
-          title="Cash Balance"
+          title={locale === "th" ? "เงินสด" : "Cash Balance"}
           value={formatCurrency(summary.cashBalance)}
           icon={<Wallet size={16} className="text-amber-600" />}
           iconBg="bg-amber-50"
@@ -206,7 +207,7 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
             <Card className="xl:col-span-2">
               <CardHeader>
-                <CardTitle>Portfolio Performance (30 Days)</CardTitle>
+                <CardTitle>{t("dashboard.performance")} (30 {locale === "th" ? "วัน" : "Days"})</CardTitle>
               </CardHeader>
               <CardContent className="pt-4 px-2 md:px-5">
                 <PerformanceChart data={performance} height={220} />
@@ -215,7 +216,7 @@ export default function DashboardPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Sector Allocation</CardTitle>
+                <CardTitle>{t("dashboard.allocation")}</CardTitle>
               </CardHeader>
               <CardContent className="pt-2 px-1 md:px-5">
                 <PortfolioAllocationChart data={allocation} height={260} />
@@ -226,7 +227,7 @@ export default function DashboardPage() {
           {/* Sector Breakdown table */}
           <Card>
             <CardHeader>
-              <CardTitle>Sector Breakdown</CardTitle>
+              <CardTitle>{locale === "th" ? "สรุปตามกลุ่มอุตสาหกรรม" : "Sector Breakdown"}</CardTitle>
             </CardHeader>
             {/* Mobile: card list */}
             <CardContent className="pt-3 md:hidden space-y-3">
@@ -257,7 +258,7 @@ export default function DashboardPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-100">
-                    {["Sector", "Value", "Allocation", "Weight"].map((h) => (
+                    {[t("dashboard.sector"), locale === "th" ? "มูลค่า" : "Value", t("dashboard.allocation"), t("dashboard.weight")].map((h) => (
                       <th
                         key={h}
                         className={cn(
@@ -323,20 +324,20 @@ export default function DashboardPage() {
                   </div>
                   <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
                     <div>
-                      <p className="text-slate-400">Qty</p>
+                      <p className="text-slate-400">{locale === "th" ? "จำนวน" : "Qty"}</p>
                       <p className="font-medium text-slate-700">{formatInteger(h.quantity)}</p>
                     </div>
                     <div>
-                      <p className="text-slate-400">Avg Cost</p>
+                      <p className="text-slate-400">{t("dashboard.avgCost")}</p>
                       <p className="font-medium text-slate-700">฿{h.avgCost.toFixed(2)}</p>
                     </div>
                     <div>
-                      <p className="text-slate-400">Price</p>
+                      <p className="text-slate-400">{t("common.price")}</p>
                       <p className="font-medium text-slate-700">฿{h.currentPrice.toFixed(2)}</p>
                     </div>
                   </div>
                   <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between">
-                    <span className="text-xs text-slate-500">Unrealized P&L</span>
+                    <span className="text-xs text-slate-500">{locale === "th" ? "กำไร/ขาดทุนที่ยังไม่รับรู้" : "Unrealized P&L"}</span>
                     <div className="text-right">
                       <p className={`text-sm font-bold ${getChangeColor(h.unrealizedPnL)}`}>
                         {h.unrealizedPnL >= 0 ? "+" : ""}{formatCurrency(h.unrealizedPnL)}
@@ -357,7 +358,7 @@ export default function DashboardPage() {
               <DataTable
                 columns={columns}
                 data={holdings as (Holding & Record<string, unknown>)[]}
-                emptyMessage="No holdings found"
+                emptyMessage={locale === "th" ? "ไม่พบหุ้น" : "No holdings found"}
                 onRowClick={(row) => router.push(`/stocks/${encodeURIComponent(row.symbol as string)}`)}
               />
             </CardContent>

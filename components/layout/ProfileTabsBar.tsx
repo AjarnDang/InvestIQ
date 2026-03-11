@@ -5,16 +5,19 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/src/utils/helpers";
 import { PROFILE_NAV_ITEMS } from "@/src/data/navigation";
+import { useTranslations } from "@/src/i18n/useTranslations";
 
 export function ProfileTabsBar() {
   const pathname = usePathname();
+  const { t }    = useTranslations();
 
   return (
     <div className="mb-6">
-      {/* Tabs row */}
       <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide border-b border-slate-200 pb-px">
         {PROFILE_NAV_ITEMS.map((item) => {
           const active = pathname === item.href || pathname.startsWith(item.href + "/");
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const label  = t(item.translationKey as any) || item.label;
           return (
             <Link
               key={item.href}
@@ -27,7 +30,7 @@ export function ProfileTabsBar() {
               )}
             >
               <item.icon size={14} className={active ? "text-indigo-600" : "text-slate-400"} />
-              {item.label}
+              {label}
             </Link>
           );
         })}

@@ -21,13 +21,13 @@ import { useAppSelector, useAppDispatch } from "@/src/store/hooks";
 import { addItem, removeItem } from "@/src/slices/watchlistSlice";
 import { cn } from "@/src/utils/helpers";
 import {
-  formatCurrency,
   formatInteger,
   formatPercent,
 } from "@/src/utils/formatters";
 import { StockPriceChart } from "@/components/charts/StockPriceChart";
 import type { StockDetail } from "@/app/api/market/detail/[symbol]/route";
 import type { PriceHistory } from "@/src/types";
+import { useTranslations } from "@/src/i18n/useTranslations";
 
 // ── Range selector ─────────────────────────────────────────────────────────
 const RANGE_OPTIONS = [
@@ -87,15 +87,24 @@ function StatTile({
   );
 }
 
-// ── QUOTE_TYPE label map ───────────────────────────────────────────────────
-const QUOTE_TYPE_LABEL: Record<string, string> = {
-  EQUITY:    "หุ้นสามัญ",
-  ETF:       "กองทุน ETF",
-  MUTUALFUND:"กองทุนรวม",
-  INDEX:     "ดัชนี",
-  CURRENCY:  "สกุลเงิน",
-  FUTURE:    "สัญญาซื้อขายล่วงหน้า",
-  OPTION:    "ออปชัน",
+// ── QUOTE_TYPE label maps ─────────────────────────────────────────────────
+const QUOTE_TYPE_LABEL_TH: Record<string, string> = {
+  EQUITY:     "หุ้นสามัญ",
+  ETF:        "กองทุน ETF",
+  MUTUALFUND: "กองทุนรวม",
+  INDEX:      "ดัชนี",
+  CURRENCY:   "สกุลเงิน",
+  FUTURE:     "สัญญาซื้อขายล่วงหน้า",
+  OPTION:     "ออปชัน",
+};
+const QUOTE_TYPE_LABEL_EN: Record<string, string> = {
+  EQUITY:     "Common Stock",
+  ETF:        "ETF",
+  MUTUALFUND: "Mutual Fund",
+  INDEX:      "Index",
+  CURRENCY:   "Currency",
+  FUTURE:     "Futures",
+  OPTION:     "Option",
 };
 
 // ── Page ───────────────────────────────────────────────────────────────────
@@ -115,6 +124,9 @@ export default function StockDetailPage({
   const [histLoading, setHistLoading] = useState(false);
   const [error,       setError]       = useState<string | null>(null);
   const [activeRange, setActiveRange] = useState<RangeLabel>("1D");
+
+  const { t, locale } = useTranslations();
+  const QUOTE_TYPE_LABEL = locale === "th" ? QUOTE_TYPE_LABEL_TH : QUOTE_TYPE_LABEL_EN;
 
   const sym = symbol?.toUpperCase() ?? "";
   const isWatched = watchlistItems.some((w) => w.symbol === sym);
@@ -149,10 +161,10 @@ export default function StockDetailPage({
         const d = await res.json();
         setDetail(d.detail ?? null);
       } else {
-        setError("ไม่พบข้อมูลหุ้นนี้");
+        setError(locale === "th" ? "ไม่พบข้อมูลหุ้นนี้" : "Stock not found");
       }
     } catch {
-      setError("เกิดข้อผิดพลาดในการโหลดข้อมูล");
+      setError(locale === "th" ? "เกิดข้อผิดพลาดในการโหลดข้อมูล" : "Failed to load data");
     } finally {
       setLoading(false);
     }
@@ -205,7 +217,7 @@ export default function StockDetailPage({
     return (
       <div className="space-y-4">
         <button onClick={() => router.back()} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-indigo-600 transition-colors">
-          <ArrowLeft size={14} /> กลับ
+          <ArrowLeft size={14} /> {locale === "th" ? "กลับ" : t("common.back")}
         </button>
         <div className="animate-pulse space-y-4">
           <div className="h-8 w-48 rounded-xl bg-slate-200" />
@@ -227,19 +239,19 @@ export default function StockDetailPage({
         <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100">
           <BarChart2 size={22} className="text-slate-400" />
         </div>
-        <p className="text-sm text-slate-500">{error ?? "ไม่พบข้อมูล"}</p>
+        <p className="text-sm text-slate-500">{error ?? (locale === "th" ? "ไม่พบข้อมูล" : "Not found")}</p>
         <div className="flex gap-3">
           <button
             onClick={reload}
             className="flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 px-4 py-2 text-sm font-semibold text-white transition-colors"
           >
-            <RefreshCw size={13} /> ลองใหม่
+            <RefreshCw size={13} /> {locale === "th" ? "ลองใหม่" : t("common.retry")}
           </button>
           <button
             onClick={() => router.back()}
             className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
           >
-            กลับ
+            {locale === "th" ? "กลับ" : t("common.back")}
           </button>
         </div>
       </div>
@@ -257,11 +269,11 @@ export default function StockDetailPage({
           onClick={() => router.back()}
           className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-indigo-600 transition-colors"
         >
-          <ArrowLeft size={14} /> กลับ
+          <ArrowLeft size={14} /> {locale === "th" ? "กลับ" : t("common.back")}
         </button>
         <span className="text-slate-300">/</span>
         <Link href="/market" className="text-sm text-slate-500 hover:text-indigo-600 transition-colors">
-          Market
+          {t("nav.market")}
         </Link>
         <span className="text-slate-300">/</span>
         <span className="text-sm font-semibold text-slate-800">{sym}</span>
@@ -326,7 +338,9 @@ export default function StockDetailPage({
                   )}
                 >
                   {isWatched ? <StarOff size={13} /> : <Star size={13} />}
-                  {isWatched ? "Unwatch" : "Watchlist"}
+                  {isWatched
+                    ? (locale === "th" ? "ยกเลิกติดตาม" : "Unwatch")
+                    : t("watchlist.title")}
                 </button>
                 <button
                   onClick={reload}
@@ -354,7 +368,7 @@ export default function StockDetailPage({
                 />
               </div>
               <span className="tabular-nums">{fmt(detail.dayHigh)}</span>
-              <span className="text-slate-400 hidden sm:block">วันนี้</span>
+              <span className="text-slate-400 hidden sm:block">{locale === "th" ? "วันนี้" : "Today"}</span>
             </div>
           </div>
         )}
@@ -372,7 +386,7 @@ export default function StockDetailPage({
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-5 py-3.5 border-b border-slate-100">
               <div className="flex items-center gap-2">
                 <Activity size={14} className="text-slate-500" />
-                <h2 className="text-sm font-semibold text-slate-800">กราฟราคา</h2>
+                <h2 className="text-sm font-semibold text-slate-800">{t("stocks.chart")}</h2>
                 {histLoading && (
                   <RefreshCw size={11} className="animate-spin text-slate-400" />
                 )}
@@ -409,7 +423,7 @@ export default function StockDetailPage({
                 />
               ) : (
                 <div className="flex items-center justify-center text-sm text-slate-400" style={{ height: 220 }}>
-                  ไม่มีข้อมูลกราฟ
+                  {locale === "th" ? "ไม่มีข้อมูลกราฟ" : "No chart data available"}
                 </div>
               )}
             </div>
@@ -419,21 +433,21 @@ export default function StockDetailPage({
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
             <div className="flex items-center gap-2 px-5 py-3.5 border-b border-slate-100">
               <BarChart2 size={14} className="text-slate-500" />
-              <h2 className="text-sm font-semibold text-slate-800">ข้อมูลสำคัญ</h2>
+              <h2 className="text-sm font-semibold text-slate-800">{t("stocks.keyStats")}</h2>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-4">
-              <StatTile label="Market Cap"   value={fmtBig(detail.marketCap)} />
-              <StatTile label="Volume"       value={fmtVol(detail.volume)} sub={`เฉลี่ย ${fmtVol(detail.avgVolume)}`} />
+              <StatTile label={locale === "th" ? "มูลค่าตลาด" : "Market Cap"} value={fmtBig(detail.marketCap)} />
+              <StatTile label={t("common.volume")} value={fmtVol(detail.volume)} sub={`${locale === "th" ? "เฉลี่ย" : "Avg"} ${fmtVol(detail.avgVolume)}`} />
               <StatTile label="P/E Ratio"    value={detail.pe ? fmt(detail.pe) : "—"} />
               <StatTile label="EPS"          value={detail.eps ? fmt(detail.eps) : "—"} />
               <StatTile label="52W High"     value={detail.high52 ? fmt(detail.high52) : "—"} />
               <StatTile label="52W Low"      value={detail.low52 ? fmt(detail.low52) : "—"} />
-              <StatTile label="Beta"         value={detail.beta ? fmt(detail.beta) : "—"} sub="ความผันผวนเทียบ S&P500" />
-              <StatTile label="Dividend"     value={detail.dividendYield ? formatPercent(detail.dividendYield * 100) : "—"} sub="อัตราเงินปันผล" />
-              <StatTile label="Open"         value={detail.open ? fmt(detail.open) : "—"} />
-              <StatTile label="Prev. Close"  value={detail.prevClose ? fmt(detail.prevClose) : "—"} />
-              <StatTile label="Day High"     value={detail.dayHigh ? fmt(detail.dayHigh) : "—"} />
-              <StatTile label="Day Low"      value={detail.dayLow ? fmt(detail.dayLow) : "—"} />
+              <StatTile label="Beta"         value={detail.beta ? fmt(detail.beta) : "—"} sub={locale === "th" ? "ความผันผวนเทียบ S&P500" : "vs S&P 500"} />
+              <StatTile label={locale === "th" ? "เงินปันผล" : "Dividend"} value={detail.dividendYield ? formatPercent(detail.dividendYield * 100) : "—"} sub={locale === "th" ? "อัตราเงินปันผล" : "Yield"} />
+              <StatTile label={t("common.open")}        value={detail.open ? fmt(detail.open) : "—"} />
+              <StatTile label={t("market.prevClose")}  value={detail.prevClose ? fmt(detail.prevClose) : "—"} />
+              <StatTile label={t("common.high")}       value={detail.dayHigh ? fmt(detail.dayHigh) : "—"} />
+              <StatTile label={t("common.low")}        value={detail.dayLow ? fmt(detail.dayLow) : "—"} />
             </div>
           </div>
         </div>
@@ -445,18 +459,18 @@ export default function StockDetailPage({
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
             <div className="flex items-center gap-2 px-4 py-3.5 border-b border-slate-100">
               <Building2 size={14} className="text-slate-500" />
-              <h2 className="text-sm font-semibold text-slate-800">ข้อมูลทั่วไป</h2>
+              <h2 className="text-sm font-semibold text-slate-800">{locale === "th" ? "ข้อมูลทั่วไป" : t("stocks.overview")}</h2>
             </div>
             <div className="divide-y divide-slate-50 text-xs">
               {[
-                { label: "ชื่อเต็ม",       value: detail.name },
-                { label: "ตัวย่อ",          value: sym },
-                { label: "ตลาด",            value: detail.exchange },
-                { label: "ประเภทหลักทรัพย์", value: QUOTE_TYPE_LABEL[detail.quoteType ?? ""] ?? detail.quoteType },
-                { label: "สกุลเงิน",        value: detail.currency },
-                { label: "ประเทศ",           value: detail.country },
-                { label: "อุตสาหกรรม",      value: detail.industry },
-                { label: "กลุ่มธุรกิจ",     value: detail.sector },
+                { label: locale === "th" ? "ชื่อเต็ม"         : "Full Name",   value: detail.name },
+                { label: locale === "th" ? "ตัวย่อ"           : "Symbol",      value: sym },
+                { label: locale === "th" ? "ตลาด"             : "Exchange",    value: detail.exchange },
+                { label: locale === "th" ? "ประเภทหลักทรัพย์" : "Type",        value: QUOTE_TYPE_LABEL[detail.quoteType ?? ""] ?? detail.quoteType },
+                { label: locale === "th" ? "สกุลเงิน"         : "Currency",    value: detail.currency },
+                { label: locale === "th" ? "ประเทศ"           : "Country",     value: detail.country },
+                { label: locale === "th" ? "อุตสาหกรรม"       : "Industry",    value: detail.industry },
+                { label: locale === "th" ? "กลุ่มธุรกิจ"      : "Sector",      value: detail.sector },
               ].map(({ label, value }) =>
                 value ? (
                   <div key={label} className="flex items-start justify-between px-4 py-2.5 gap-2">
@@ -468,7 +482,7 @@ export default function StockDetailPage({
               {detail.employees && (
                 <div className="flex items-center justify-between px-4 py-2.5">
                   <span className="text-slate-500 flex items-center gap-1.5">
-                    <Users size={11} /> พนักงาน
+                    <Users size={11} /> {locale === "th" ? "พนักงาน" : "Employees"}
                   </span>
                   <span className="text-slate-800 font-medium">
                     {formatInteger(detail.employees)}
@@ -478,7 +492,7 @@ export default function StockDetailPage({
               {detail.website && (
                 <div className="flex items-center justify-between px-4 py-2.5">
                   <span className="text-slate-500 flex items-center gap-1.5">
-                    <Globe size={11} /> เว็บไซต์
+                    <Globe size={11} /> {locale === "th" ? "เว็บไซต์" : "Website"}
                   </span>
                   <a
                     href={detail.website.startsWith("http") ? detail.website : `https://${detail.website}`}
@@ -486,7 +500,7 @@ export default function StockDetailPage({
                     rel="noopener noreferrer"
                     className="text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1"
                   >
-                    เยี่ยมชม <ExternalLink size={10} />
+                    {locale === "th" ? "เยี่ยมชม" : "Visit"} <ExternalLink size={10} />
                   </a>
                 </div>
               )}
@@ -497,7 +511,7 @@ export default function StockDetailPage({
           {detail.description && (
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
               <div className="px-4 py-3.5 border-b border-slate-100">
-                <h2 className="text-sm font-semibold text-slate-800">เกี่ยวกับบริษัท</h2>
+                <h2 className="text-sm font-semibold text-slate-800">{locale === "th" ? "เกี่ยวกับบริษัท" : "About"}</h2>
               </div>
               <div className="px-4 py-4">
                 <p className="text-xs text-slate-600 leading-relaxed line-clamp-8">

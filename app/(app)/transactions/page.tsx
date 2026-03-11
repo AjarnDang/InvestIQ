@@ -12,28 +12,30 @@ import type { Transaction, TransactionType, TransactionStatus } from "@/src/type
 import { formatCurrency, formatDate } from "@/src/utils/formatters";
 import { TRANSACTION_TYPE_CONFIG, STATUS_CONFIG, cn } from "@/src/utils/helpers";
 import { ProfileTabsBar } from "@/components/layout/ProfileTabsBar";
-
-const TYPE_OPTIONS: Array<{ value: TransactionType | "ALL"; label: string }> = [
-  { value: "ALL", label: "All Types" },
-  { value: "BUY", label: "Buy" },
-  { value: "SELL", label: "Sell" },
-  { value: "DIVIDEND", label: "Dividend" },
-  { value: "DEPOSIT", label: "Deposit" },
-  { value: "WITHDRAW", label: "Withdraw" },
-];
-
-const STATUS_OPTIONS: Array<{ value: TransactionStatus | "ALL"; label: string }> = [
-  { value: "ALL", label: "All Status" },
-  { value: "COMPLETED", label: "Completed" },
-  { value: "PENDING", label: "Pending" },
-  { value: "CANCELLED", label: "Cancelled" },
-];
+import { useTranslations } from "@/src/i18n/useTranslations";
 
 export default function TransactionsPage() {
   const router   = useRouter();
   const dispatch = useAppDispatch();
+  const { t, locale } = useTranslations();
   const { transactions, filter } = useAppSelector((s) => s.transactions);
   const [showFilters, setShowFilters] = React.useState(false);
+
+  const TYPE_OPTIONS: Array<{ value: TransactionType | "ALL"; label: string }> = [
+    { value: "ALL",      label: t("transactions.allTypes")  },
+    { value: "BUY",      label: t("transactions.buy")       },
+    { value: "SELL",     label: t("transactions.sell")      },
+    { value: "DIVIDEND", label: t("transactions.dividend")  },
+    { value: "DEPOSIT",  label: locale === "th" ? "ฝากเงิน" : "Deposit"  },
+    { value: "WITHDRAW", label: locale === "th" ? "ถอนเงิน" : "Withdraw" },
+  ];
+
+  const STATUS_OPTIONS: Array<{ value: TransactionStatus | "ALL"; label: string }> = [
+    { value: "ALL",       label: t("transactions.allStatuses") },
+    { value: "COMPLETED", label: t("transactions.completed")   },
+    { value: "PENDING",   label: t("transactions.pending")     },
+    { value: "CANCELLED", label: t("transactions.cancelled")   },
+  ];
 
   const filtered = useMemo(() => {
     return transactions.filter((txn) => {
@@ -68,25 +70,25 @@ export default function TransactionsPage() {
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
         <StatCard
-          title="Total Bought"
+          title={locale === "th" ? "ซื้อทั้งหมด" : "Total Bought"}
           value={formatCurrency(stats.buys)}
           icon={<ArrowUpDown size={16} className="text-blue-600" />}
           iconBg="bg-blue-50"
         />
         <StatCard
-          title="Total Sold"
+          title={locale === "th" ? "ขายทั้งหมด" : "Total Sold"}
           value={formatCurrency(stats.sells)}
           icon={<ArrowUpDown size={16} className="text-emerald-600" />}
           iconBg="bg-emerald-50"
         />
         <StatCard
-          title="Dividends"
+          title={t("transactions.dividend")}
           value={formatCurrency(stats.dividends)}
           icon={<DollarSign size={16} className="text-amber-600" />}
           iconBg="bg-amber-50"
         />
         <StatCard
-          title="Total Fees"
+          title={locale === "th" ? "ค่าธรรมเนียมรวม" : "Total Fees"}
           value={formatCurrency(stats.totalFees)}
           icon={<Filter size={16} className="text-slate-500" />}
           iconBg="bg-slate-50"
@@ -98,10 +100,10 @@ export default function TransactionsPage() {
         <CardHeader>
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <CardTitle>Transaction History</CardTitle>
+              <CardTitle>{t("transactions.title")}</CardTitle>
               <div className="flex items-center gap-2">
                 <Button variant="ghost" size="sm" onClick={() => dispatch(resetFilter())} className="hidden md:flex">
-                  Reset
+                  {locale === "th" ? "รีเซ็ต" : "Reset"}
                 </Button>
                 {/* Mobile filter toggle */}
                 <button
@@ -114,7 +116,7 @@ export default function TransactionsPage() {
                   )}
                 >
                   <Filter size={12} />
-                  Filters
+                  {t("common.filter")}
                   {showFilters ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                 </button>
               </div>
@@ -127,7 +129,7 @@ export default function TransactionsPage() {
                 <input
                   value={filter.search}
                   onChange={(e) => dispatch(updateFilter({ search: e.target.value }))}
-                  placeholder="Search transactions..."
+                  placeholder={t("transactions.searchPlaceholder")}
                   className="h-9 w-full md:w-52 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
                 <div className="grid grid-cols-2 gap-2 md:flex md:gap-2">
@@ -176,13 +178,16 @@ export default function TransactionsPage() {
                   onClick={() => dispatch(resetFilter())}
                   className="md:hidden text-xs text-indigo-600 hover:text-indigo-700 underline text-left"
                 >
-                  Reset filters
+                  {locale === "th" ? "รีเซ็ตตัวกรอง" : "Reset filters"}
                 </button>
               </div>
             </div>
 
             <p className="text-xs text-slate-500">
-              Showing {filtered.length} of {transactions.length} transactions
+              {locale === "th"
+                ? `แสดง ${filtered.length} จาก ${transactions.length} รายการ`
+                : `Showing ${filtered.length} of ${transactions.length} transactions`
+              }
             </p>
           </div>
         </CardHeader>
@@ -191,7 +196,7 @@ export default function TransactionsPage() {
           {/* Mobile: card list */}
           <div className="divide-y divide-slate-100 md:hidden">
             {filtered.length === 0 ? (
-              <p className="py-12 text-center text-sm text-slate-400">No transactions found</p>
+              <p className="py-12 text-center text-sm text-slate-400">{t("transactions.noResults")}</p>
             ) : (
               filtered.map((txn: Transaction) => {
                 const cfg = TRANSACTION_TYPE_CONFIG[txn.type];
@@ -240,15 +245,25 @@ export default function TransactionsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-200">
-                  {["Date", "Type", "Stock / Description", "Qty", "Price", "Amount", "Fee", "Status", "Note"].map((h) => (
+                  {[
+                    { label: t("transactions.date"),   right: false },
+                    { label: t("transactions.type"),   right: false },
+                    { label: locale === "th" ? "หุ้น / รายละเอียด" : "Stock / Description", right: false },
+                    { label: t("transactions.shares"), right: true  },
+                    { label: t("common.price"),        right: true  },
+                    { label: t("transactions.total"),  right: true  },
+                    { label: locale === "th" ? "ค่าธรรมเนียม" : "Fee", right: true },
+                    { label: t("transactions.status"), right: false },
+                    { label: t("transactions.notes"),  right: false },
+                  ].map(({ label, right }) => (
                     <th
-                      key={h}
+                      key={label}
                       className={cn(
                         "px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap",
-                        ["Qty", "Price", "Amount", "Fee"].includes(h) ? "text-right" : "text-left"
+                        right ? "text-right" : "text-left"
                       )}
                     >
-                      {h}
+                      {label}
                     </th>
                   ))}
                 </tr>
@@ -256,7 +271,7 @@ export default function TransactionsPage() {
               <tbody>
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="py-12 text-center text-sm text-slate-400">No transactions found</td>
+                    <td colSpan={9} className="py-12 text-center text-sm text-slate-400">{t("transactions.noResults")}</td>
                   </tr>
                 ) : (
                   filtered.map((txn: Transaction) => {

@@ -23,11 +23,13 @@ import {
   LOGIN_CHART_BARS,
 } from "@/src/data/landingContent";
 import { DEFAULT_DEMO_CREDENTIAL } from "@/src/data/accounts";
+import { useTranslations } from "@/src/i18n/useTranslations";
 
 export default function LoginPage() {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const { loading, error, isAuthenticated } = useAppSelector((s) => s.auth);
+  const { t } = useTranslations();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -38,30 +40,24 @@ export default function LoginPage() {
     password?: string;
   }>({});
 
-  // Redirect if already authenticated
   useEffect(() => {
-    if (getAuthSession()) {
-      router.replace("/home");
-    }
+    if (getAuthSession()) router.replace("/home");
   }, [router]);
 
   useEffect(() => {
-    if (isAuthenticated) {
-      router.replace("/home");
-    }
+    if (isAuthenticated) router.replace("/home");
   }, [isAuthenticated, router]);
 
-  // Clear auth error when inputs change
   useEffect(() => {
     if (error) dispatch(clearAuthError());
   }, [email, password]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const validate = () => {
     const errs: { email?: string; password?: string } = {};
-    if (!email) errs.email = "Email is required";
-    else if (!/\S+@\S+\.\S+/.test(email)) errs.email = "Invalid email format";
-    if (!password) errs.password = "Password is required";
-    else if (password.length < 6) errs.password = "Password must be at least 6 characters";
+    if (!email)                         errs.email    = t("login.errorEmail");
+    else if (!/\S+@\S+\.\S+/.test(email)) errs.email  = t("login.errorEmailFormat");
+    if (!password)                      errs.password = t("login.errorPassword");
+    else if (password.length < 6)       errs.password = t("login.errorPasswordLen");
     setFieldErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -82,7 +78,6 @@ export default function LoginPage() {
     <div className="min-h-screen bg-slate-950 flex">
       {/* ─── Left Panel (branding) ─────────────────────────────────────────── */}
       <div className="hidden lg:flex lg:w-[55%] xl:w-[60%] flex-col justify-between p-12 relative overflow-hidden bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900">
-        {/* Background glow */}
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 h-96 w-96 rounded-full bg-indigo-600/15 blur-3xl pointer-events-none" />
         <div className="absolute bottom-1/4 right-1/4 h-64 w-64 rounded-full bg-purple-600/10 blur-3xl pointer-events-none" />
 
@@ -97,13 +92,18 @@ export default function LoginPage() {
         {/* Center content */}
         <div className="relative space-y-8">
           <div>
-            <h2 className="text-4xl xl:text-5xl font-black text-white leading-tight mb-4">
-              Your portfolio,
-              <br />
-              <span className="text-indigo-400">always in view.</span>
+            <h2 className="text-4xl xl:text-5xl font-black text-white leading-tight mb-4 whitespace-pre-line">
+              {t("login.heroTitle").includes("\n")
+                ? t("login.heroTitle").split("\n").map((line, i) => (
+                    <React.Fragment key={i}>
+                      {i === 0 ? line : <><br /><span className="text-indigo-400">{line}</span></>}
+                    </React.Fragment>
+                  ))
+                : <>{t("login.heroTitle").split(",")[0]},<br /><span className="text-indigo-400">{t("login.heroTitle").split(",")[1]}</span></>
+              }
             </h2>
             <p className="text-slate-400 text-lg leading-relaxed max-w-md">
-              Track your investments, monitor the SET market, and get intelligent alerts — all in one beautiful platform.
+              {t("login.heroSubtitle")}
             </p>
           </div>
 
@@ -128,7 +128,6 @@ export default function LoginPage() {
                 </div>
               ))}
             </div>
-            {/* Mini chart */}
             <div className="flex items-end gap-0.5 h-12">
               {LOGIN_CHART_BARS.map((h, i) => (
                 <div
@@ -141,7 +140,6 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Bottom quote */}
         <p className="relative text-xs text-slate-600">
           © 2026 InvestIQ · For educational and demonstration purposes only
         </p>
@@ -162,7 +160,7 @@ export default function LoginPage() {
             className="flex items-center gap-1 text-sm text-slate-400 hover:text-white transition-colors"
           >
             <ChevronLeft size={15} />
-            Back
+            {t("common.back")}
           </Link>
         </div>
 
@@ -173,7 +171,7 @@ export default function LoginPage() {
             className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-white transition-colors"
           >
             <ChevronLeft size={15} />
-            Back to home
+            {t("login.backToHome")}
           </Link>
         </div>
 
@@ -182,10 +180,10 @@ export default function LoginPage() {
           <div className="w-full max-w-sm">
             <div className="mb-8">
               <h1 className="text-2xl md:text-3xl font-black text-white mb-2">
-                Welcome back
+                {t("login.title")}
               </h1>
               <p className="text-slate-400 text-sm">
-                Sign in to your InvestIQ account
+                {t("login.subtitle")}
               </p>
             </div>
 
@@ -199,7 +197,7 @@ export default function LoginPage() {
                 <TrendingUp size={14} className="text-indigo-400" />
               </div>
               <div className="min-w-0">
-                <p className="text-xs font-semibold text-indigo-300 mb-0.5">Try Demo Account</p>
+                <p className="text-xs font-semibold text-indigo-300 mb-0.5">{t("login.demoHint")}</p>
                 <p className="text-[11px] text-slate-500 font-mono">
                   {DEFAULT_DEMO_CREDENTIAL.email} · {DEFAULT_DEMO_CREDENTIAL.password}
                 </p>
@@ -212,7 +210,6 @@ export default function LoginPage() {
 
             {/* Form */}
             <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-              {/* Global error */}
               {error && (
                 <div className="flex items-center gap-2.5 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3">
                   <AlertCircle size={16} className="text-red-400 flex-shrink-0" />
@@ -223,18 +220,15 @@ export default function LoginPage() {
               {/* Email */}
               <div>
                 <label className="block text-xs font-medium text-slate-400 mb-1.5">
-                  Email address
+                  {t("login.emailLabel")}
                 </label>
                 <div className="relative">
-                  <Mail
-                    size={15}
-                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"
-                  />
+                  <Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
                   <input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@example.com"
+                    placeholder={t("login.emailPlaceholder")}
                     className={`w-full rounded-xl border bg-slate-900 pl-10 pr-4 py-3 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors ${
                       fieldErrors.email
                         ? "border-red-500/50 focus:ring-red-500"
@@ -251,13 +245,10 @@ export default function LoginPage() {
               {/* Password */}
               <div>
                 <label className="block text-xs font-medium text-slate-400 mb-1.5">
-                  Password
+                  {t("login.passwordLabel")}
                 </label>
                 <div className="relative">
-                  <Lock
-                    size={15}
-                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"
-                  />
+                  <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
                   <input
                     type={showPassword ? "text" : "password"}
                     value={password}
@@ -275,6 +266,7 @@ export default function LoginPage() {
                     onClick={() => setShowPassword((v) => !v)}
                     className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
                     tabIndex={-1}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
                   >
                     {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                   </button>
@@ -296,28 +288,15 @@ export default function LoginPage() {
                     }`}
                   >
                     {remember && (
-                      <svg
-                        className="h-2.5 w-2.5 text-white"
-                        fill="none"
-                        viewBox="0 0 12 12"
-                      >
-                        <path
-                          d="M2 6l3 3 5-5"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
+                      <svg className="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 12 12">
+                        <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                     )}
                   </div>
-                  <span className="text-xs text-slate-400">Remember me</span>
+                  <span className="text-xs text-slate-400">{t("login.rememberMe")}</span>
                 </label>
-                <button
-                  type="button"
-                  className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
-                >
-                  Forgot password?
+                <button type="button" className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors">
+                  {t("login.forgotPassword")}
                 </button>
               </div>
 
@@ -329,30 +308,15 @@ export default function LoginPage() {
               >
                 {loading ? (
                   <>
-                    <svg
-                      className="animate-spin h-4 w-4"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      />
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                      />
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                     </svg>
-                    Signing in...
+                    {t("login.signingIn")}
                   </>
                 ) : (
                   <>
-                    Sign In
+                    {t("login.signIn")}
                     <ArrowRight size={16} />
                   </>
                 )}
@@ -361,10 +325,10 @@ export default function LoginPage() {
 
             {/* Footer */}
             <p className="mt-8 text-center text-xs text-slate-600">
-              For demo access, use the credentials above.{" "}
+              {t("login.demoOnly")}{" "}
               <br className="sm:hidden" />
               <Link href="/home" className="text-indigo-400 hover:text-indigo-300 transition-colors">
-                Learn more about InvestIQ →
+                {t("login.learnMore")}
               </Link>
             </p>
           </div>

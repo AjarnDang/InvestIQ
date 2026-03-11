@@ -26,10 +26,12 @@ import { Badge } from "@/components/ui/Badge";
 import type { WatchlistItem } from "@/src/types";
 import { formatDate } from "@/src/utils/formatters";
 import { getChangeColor, getChangeBgColor, cn } from "@/src/utils/helpers";
+import { useTranslations } from "@/src/i18n/useTranslations";
 
 export default function WatchlistPage() {
   const router   = useRouter();
   const dispatch = useAppDispatch();
+  const { t, locale } = useTranslations();
   const { items } = useAppSelector((s) => s.watchlist);
   const allStocks = useAppSelector((s) => s.market.stocks);
 
@@ -77,20 +79,20 @@ export default function WatchlistPage() {
           <div className="flex items-center gap-1.5 text-sm text-slate-600">
             <Star size={14} className="text-amber-400 fill-amber-400" />
             <span className="font-medium">{items.length}</span>
-            <span className="text-slate-400">stocks</span>
+            <span className="text-slate-400">{locale === "th" ? "หุ้น" : "stocks"}</span>
           </div>
           {items.filter((i) => i.alertEnabled).length > 0 && (
             <div className="flex items-center gap-1.5 text-sm text-slate-600">
               <Bell size={13} className="text-indigo-500" />
               <span className="font-medium">{items.filter((i) => i.alertEnabled).length}</span>
-              <span className="text-slate-400">alerts</span>
+              <span className="text-slate-400">{locale === "th" ? "แจ้งเตือน" : "alerts"}</span>
             </div>
           )}
         </div>
         <Button variant="primary" size="sm" onClick={() => setShowAddModal(true)}>
           <Plus size={14} />
-          <span className="hidden sm:inline">Add Stock</span>
-          <span className="sm:hidden">Add</span>
+          <span className="hidden sm:inline">{t("watchlist.addStock")}</span>
+          <span className="sm:hidden">{t("common.add")}</span>
         </Button>
       </div>
 
@@ -99,7 +101,7 @@ export default function WatchlistPage() {
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl overflow-hidden">
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-              <h3 className="text-base font-semibold text-slate-800">Add to Watchlist</h3>
+              <h3 className="text-base font-semibold text-slate-800">{t("watchlist.addButton")}</h3>
               <button
                 title="Close modal"
                 onClick={() => setShowAddModal(false)}
@@ -111,7 +113,7 @@ export default function WatchlistPage() {
             <div className="max-h-[60vh] overflow-y-auto divide-y divide-slate-100">
               {availableToAdd.length === 0 ? (
                 <p className="text-sm text-slate-400 text-center py-10">
-                  All stocks are already in your watchlist
+                  {locale === "th" ? "หุ้นทั้งหมดอยู่ในรายการติดตามแล้ว" : "All stocks are already in your watchlist"}
                 </p>
               ) : (
                 availableToAdd.map((s) => (
@@ -143,11 +145,11 @@ export default function WatchlistPage() {
         <Card>
           <CardContent className="py-16 text-center">
             <Star size={40} className="mx-auto text-slate-200 mb-3" />
-            <p className="text-slate-500 font-medium">Your watchlist is empty</p>
-            <p className="text-sm text-slate-400 mt-1">Add stocks to monitor their performance</p>
+            <p className="text-slate-500 font-medium">{t("watchlist.emptyTitle")}</p>
+            <p className="text-sm text-slate-400 mt-1">{t("watchlist.emptySubtitle")}</p>
             <Button variant="primary" size="sm" className="mt-4" onClick={() => setShowAddModal(true)}>
               <Plus size={14} />
-              Add Your First Stock
+              {locale === "th" ? "เพิ่มหุ้นตัวแรก" : "Add Your First Stock"}
             </Button>
           </CardContent>
         </Card>
@@ -216,7 +218,7 @@ export default function WatchlistPage() {
                           if (e.key === "Enter") handleSaveAlert(item.symbol);
                           if (e.key === "Escape") setEditAlert(null);
                         }}
-                        placeholder="Target price"
+                        placeholder={locale === "th" ? "ราคาเป้าหมาย" : "Target price"}
                         className="flex-1 h-8 rounded-lg border border-slate-200 px-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 min-w-0"
                         type="number"
                       />
@@ -237,8 +239,8 @@ export default function WatchlistPage() {
                         )}
                         <span className="text-xs text-slate-500 truncate">
                           {item.alertEnabled && item.alertPrice
-                            ? `Alert at ฿${item.alertPrice.toFixed(2)}`
-                            : "No alert set"}
+                            ? `${t("watchlist.alertPrice")}: ฿${item.alertPrice.toFixed(2)}`
+                            : locale === "th" ? "ไม่ได้ตั้งการแจ้งเตือน" : "No alert set"}
                         </span>
                       </div>
                       <div className="flex items-center gap-1 flex-shrink-0 ml-2">

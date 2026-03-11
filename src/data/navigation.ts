@@ -15,36 +15,39 @@ import {
 
 export interface NavItem {
   href: string;
+  /** Fallback label (English) used when no translation is available */
   label: string;
   icon: LucideIcon;
+  /** Dot-path into the Messages object, e.g. "nav.home" or "auth.portfolio" */
+  translationKey: string;
 }
 
 // ── Main navigation — public, same for all users ──────────────────────────
 export const MAIN_NAV_ITEMS: NavItem[] = [
-  { href: "/home",     label: "Home",       icon: Home       },
-  { href: "/market",   label: "Market",     icon: BarChart2  },
-  { href: "/news",     label: "News",       icon: Newspaper  },
-  { href: "/learn",    label: "Learn",      icon: BookOpen   },
-  { href: "/plans",    label: "แผนการลงทุน", icon: TrendingUp },
-  { href: "/services", label: "บริการ",     icon: Briefcase  },
-  { href: "/about",    label: "เกี่ยวกับเรา", icon: Info     },
+  { href: "/home",     label: "Home",            icon: Home,       translationKey: "nav.home"     },
+  { href: "/market",   label: "Market",          icon: BarChart2,  translationKey: "nav.market"   },
+  { href: "/news",     label: "News",            icon: Newspaper,  translationKey: "nav.news"     },
+  { href: "/learn",    label: "Learn",           icon: BookOpen,   translationKey: "nav.learn"    },
+  { href: "/plans",    label: "Investment Plans", icon: TrendingUp, translationKey: "nav.planning" },
+  { href: "/services", label: "Services",        icon: Briefcase,  translationKey: "nav.services" },
+  { href: "/about",    label: "About Us",        icon: Info,       translationKey: "nav.about"    },
 ];
 
 // ── Profile nav — authenticated users only (shown in profile dropdown) ────
 export const PROFILE_NAV_ITEMS: NavItem[] = [
-  { href: "/dashboard",    label: "Portfolio",    icon: PieChart      },
-  { href: "/transactions", label: "Transactions", icon: ArrowLeftRight },
-  { href: "/watchlist",    label: "Watchlist",    icon: Star           },
-  { href: "/settings",     label: "Settings",     icon: Settings       },
+  { href: "/dashboard",    label: "Portfolio",    icon: PieChart,       translationKey: "auth.portfolio"    },
+  { href: "/transactions", label: "Transactions", icon: ArrowLeftRight, translationKey: "auth.transactions" },
+  { href: "/watchlist",    label: "Watchlist",    icon: Star,           translationKey: "auth.watchlist"    },
+  { href: "/settings",     label: "Settings",     icon: Settings,       translationKey: "auth.settings"     },
 ];
 
 // ── Legacy aliases (kept for backward compatibility) ─────────────────────────
 export const BOTTOM_NAV_ITEMS: NavItem[] = [
-  { href: "/home",         label: "Home",         icon: Home          },
-  { href: "/market",       label: "Market",       icon: BarChart2     },
-  { href: "/news",         label: "News",         icon: Newspaper     },
-  { href: "/dashboard",    label: "Portfolio",    icon: PieChart      },
-  { href: "/settings",     label: "Settings",     icon: Settings      },
+  { href: "/home",      label: "Home",      icon: Home,     translationKey: "nav.home"          },
+  { href: "/market",    label: "Market",    icon: BarChart2, translationKey: "nav.market"        },
+  { href: "/news",      label: "News",      icon: Newspaper, translationKey: "nav.news"          },
+  { href: "/dashboard", label: "Portfolio", icon: PieChart,  translationKey: "auth.portfolio"    },
+  { href: "/settings",  label: "Settings",  icon: Settings,  translationKey: "auth.settings"     },
 ];
 
 export const SETTINGS_NAV_ITEMS: NavItem[] = PROFILE_NAV_ITEMS;

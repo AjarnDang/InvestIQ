@@ -252,6 +252,8 @@ export function Navbar() {
           <div className="hidden lg:flex items-center gap-0.5 flex-1 min-w-0">
             {MAIN_NAV_ITEMS.map((item) => {
               const active = pathname === item.href;
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const label  = t(item.translationKey as any) || item.label;
               return (
                 <Link
                   key={item.href}
@@ -263,7 +265,7 @@ export function Navbar() {
                       : "text-slate-600 hover:text-slate-900 hover:bg-slate-100",
                   )}
                 >
-                  {item.label}
+                  {label}
                 </Link>
               );
             })}
@@ -579,6 +581,8 @@ export function Navbar() {
               {/* Main nav */}
               {MAIN_NAV_ITEMS.map((item) => {
                 const active = pathname === item.href;
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const label  = t(item.translationKey as any) || item.label;
                 return (
                   <Link
                     key={item.href}
@@ -595,7 +599,7 @@ export function Navbar() {
                       size={16}
                       className={active ? "text-indigo-600" : "text-slate-400"}
                     />
-                    {item.label}
+                    {label}
                     {active && (
                       <span className="ml-auto h-1.5 w-1.5 rounded-full bg-indigo-500" />
                     )}
@@ -634,6 +638,8 @@ export function Navbar() {
                   </p>
                   {PROFILE_NAV_ITEMS.map((item) => {
                     const active = pathname === item.href;
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const pLabel = t(item.translationKey as any) || item.label;
                     return (
                       <Link
                         key={item.href}
@@ -650,7 +656,7 @@ export function Navbar() {
                           size={16}
                           className={active ? "text-indigo-600" : "text-slate-400"}
                         />
-                        {item.label}
+                        {pLabel}
                       </Link>
                     );
                   })}
