@@ -1,71 +1,77 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Search,
   TrendingUp,
   TrendingDown,
-  BarChart2,
-  SlidersHorizontal,
   ArrowUpRight,
 } from "lucide-react";
 import { IndexBanner } from "@/components/ui/IndexBanner";
 import { useAppSelector } from "@/src/store/hooks";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import type { Stock } from "@/src/types";
-import {
-  formatMarketCap,
-  formatVolume,
-  formatPercent,
-} from "@/src/utils/formatters";
+import { formatMarketCap, formatPercent, formatVolume } from "@/src/utils/formatters";
 import { getGainersAndLosers } from "@/src/functions/marketFunctions";
-import { getChangeColor, getChangeBgColor, cn } from "@/src/utils/helpers";
+import { cn, getChangeBgColor, getChangeColor } from "@/src/utils/helpers";
 import { useTranslations } from "@/src/i18n/useTranslations";
+import { MarketSearch } from "@/components/market/MarketSearch";
+import { StockScreenerTable } from "@/components/market/StockScreenerTable";
 
-const SECTORS = ["ALL", "Energy", "Banking", "Technology", "Industrial", "Consumer", "Finance"];
+const ASSET_TABS = [
+  { key: "us", labelTH: "หุ้นสหรัฐฯ", labelEN: "US Stocks" },
+  { key: "th", labelTH: "หุ้นไทย", labelEN: "Thai Stocks" },
+  { key: "etf", labelTH: "ETF", labelEN: "ETFs" },
+  { key: "crypto", labelTH: "คริปโต", labelEN: "Crypto" },
+  { key: "all", labelTH: "ทั้งหมด", labelEN: "All" },
+] as const;
 
 export default function MarketPage() {
   const router = useRouter();
   const { t, locale } = useTranslations();
-  const { stocks, indices, globalIndices, loading, loadingGlobal } = useAppSelector((s) => s.market);
+  const { stocks, indices, globalIndices, loading, loadingGlobal } =
+    useAppSelector((s) => s.market);
 
-  const [search,      setSearch]      = useState("");
-  const [sector,      setSector]      = useState("ALL");
-  const [sortField,   setSortField]   = useState<keyof Stock>("changePercent");
-  const [sortDir,     setSortDir]     = useState<"asc" | "desc">("desc");
-  const [showFilters, setShowFilters] = useState(false);
+  const [activeAsset, setActiveAsset] = useState<(typeof ASSET_TABS)[number]["key"]>("us");
+  const [assetStocks, setAssetStocks] = useState<Stock[]>([]);
+  const [assetLoading, setAssetLoading] = useState(false);
 
-  const { gainers, losers } = useMemo(() => getGainersAndLosers(stocks), [stocks]);
+  const [search, setSearch] = useState("");
 
-  const filtered = useMemo(() => {
-    let result = [...stocks];
-    if (search) {
-      const q = search.toLowerCase();
-      result = result.filter(
-        (s) => s.symbol.toLowerCase().includes(q) || s.name.toLowerCase().includes(q),
-      );
-    }
-    if (sector !== "ALL") result = result.filter((s) => s.sector === sector);
-    return result.sort((a, b) => {
-      const av = a[sortField] as number;
-      const bv = b[sortField] as number;
-      return sortDir === "asc" ? av - bv : bv - av;
-    });
-  }, [stocks, search, sector, sortField, sortDir]);
+  const { gainers, losers } = useMemo(
+    () => getGainersAndLosers(assetStocks.length ? assetStocks : stocks),
+    [assetStocks, stocks],
+  );
 
-  function handleSort(field: keyof Stock) {
-    if (sortField === field) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    else { setSortField(field); setSortDir("desc"); }
-  }
+  const visibleStocks = assetStocks.length ? assetStocks : stocks;
 
   function goToDetail(symbol: string) {
     router.push(`/stocks/${symbol.toUpperCase()}`);
   }
 
+  async function loadAssetQuotes(asset: string) {
+    setAssetLoading(true);
+    try {
+      const res = await fetch(`/api/market/quotes?asset=${encodeURIComponent(asset)}&limit=30`);
+      if (res.ok) {
+        const data = (await res.json()) as { stocks?: Stock[] };
+        setAssetStocks(data.stocks ?? []);
+      } else {
+        setAssetStocks([]);
+      }
+    } catch {
+      setAssetStocks([]);
+    } finally {
+      setAssetLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadAssetQuotes(activeAsset);
+  }, [activeAsset]);
+
   return (
     <div className="space-y-4 md:space-y-6">
-
       {/* ── Live status bar ─────────────────────────────────────────────── */}
       <div className="flex items-center justify-between text-xs text-slate-500">
         <span className="font-medium text-slate-700">SET Market</span>
@@ -78,7 +84,9 @@ export default function MarketPage() {
           ) : (
             <>
               <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
-              {locale === "th" ? "ข้อมูลสด · อัปเดตทุก 60 วิ" : "Live · updates every 60s"}
+              {locale === "th"
+                ? "ข้อมูลสด · อัปเดตทุก 60 วิ"
+                : "Live · updates every 60s"}
             </>
           )}
         </div>
@@ -125,12 +133,17 @@ export default function MarketPage() {
                 </div>
                 <div className="text-right shrink-0 flex items-center gap-2">
                   <div>
-                    <p className="text-sm font-semibold text-slate-700">฿{s.price.toFixed(2)}</p>
+                    <p className="text-sm font-semibold text-slate-700">
+                      ฿{s.price.toFixed(2)}
+                    </p>
                     <span className="text-xs font-medium text-emerald-600">
                       +{s.changePercent.toFixed(2)}%
                     </span>
                   </div>
-                  <ArrowUpRight size={13} className="text-slate-300 group-hover:text-indigo-400 transition-colors shrink-0" />
+                  <ArrowUpRight
+                    size={13}
+                    className="text-slate-300 group-hover:text-indigo-400 transition-colors shrink-0"
+                  />
                 </div>
               </div>
             ))}
@@ -163,12 +176,17 @@ export default function MarketPage() {
                 </div>
                 <div className="text-right shrink-0 flex items-center gap-2">
                   <div>
-                    <p className="text-sm font-semibold text-slate-700">฿{s.price.toFixed(2)}</p>
+                    <p className="text-sm font-semibold text-slate-700">
+                      ฿{s.price.toFixed(2)}
+                    </p>
                     <span className="text-xs font-medium text-red-600">
                       {s.changePercent.toFixed(2)}%
                     </span>
                   </div>
-                  <ArrowUpRight size={13} className="text-slate-300 group-hover:text-indigo-400 transition-colors shrink-0" />
+                  <ArrowUpRight
+                    size={13}
+                    className="text-slate-300 group-hover:text-indigo-400 transition-colors shrink-0"
+                  />
                 </div>
               </div>
             ))}
@@ -176,247 +194,205 @@ export default function MarketPage() {
         </Card>
       </div>
 
-      {/* ── Stock Screener Table ─────────────────────────────────────────── */}
-      <Card>
-        <CardHeader>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <BarChart2 size={15} className="text-slate-500" />
-                <CardTitle>{locale === "th" ? "คัดกรองหุ้น" : "Stock Screener"}</CardTitle>
-              </div>
-              {/* Mobile filter toggle */}
+      {/* ── Stock Search ────────────────────────────────────────────────── */}
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex gap-1.5 flex-wrap">
+            {ASSET_TABS.map((tab) => (
               <button
-                onClick={() => setShowFilters((v) => !v)}
+                key={tab.key}
+                onClick={() => setActiveAsset(tab.key)}
                 className={cn(
-                  "flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors md:hidden",
-                  showFilters
-                    ? "border-indigo-300 bg-indigo-50 text-indigo-600"
-                    : "border-slate-200 text-slate-600 hover:bg-slate-50",
+                  "px-3 py-1.5 rounded-full text-xs font-semibold transition-colors border",
+                  activeAsset === tab.key
+                    ? "bg-indigo-600 text-white border-indigo-600"
+                    : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50",
                 )}
               >
-                <SlidersHorizontal size={13} />
-                {t("common.filter")}
+                {locale === "th" ? tab.labelTH : tab.labelEN}
               </button>
-            </div>
-
-            {/* Mobile: collapsible filters */}
-            <div className={cn("space-y-2 md:hidden", !showFilters && "hidden")}>
-              <div className="relative">
-                <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                <input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder={t("market.searchStocks")}
-                  className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 pl-8 pr-3 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-              <div className="flex gap-1.5 flex-wrap">
-                {SECTORS.map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => setSector(s)}
-                    className={cn(
-                      "px-2.5 py-1 rounded-lg text-xs font-medium transition-colors",
-                      sector === s ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600",
-                    )}
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Desktop filters (always visible) */}
-            <div className="hidden md:flex flex-wrap items-center gap-2">
-              <div className="relative">
-                <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                <input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder={t("common.search")}
-                  className="h-8 w-44 rounded-lg border border-slate-200 bg-slate-50 pl-8 pr-3 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-              <div className="flex gap-1 flex-wrap">
-                {SECTORS.map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => setSector(s)}
-                    className={cn(
-                      "px-2.5 py-1 rounded-lg text-xs font-medium transition-colors",
-                      sector === s ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200",
-                    )}
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </CardHeader>
-
-        <CardContent className="px-0 pb-0 pt-2">
-          {/* Mobile: card list */}
-          <div className="divide-y divide-slate-100 md:hidden">
-            {filtered.map((stock) => (
-              <div
-                key={stock.symbol}
-                className="flex items-center justify-between px-4 py-3 hover:bg-slate-50 active:bg-slate-100 cursor-pointer group transition-colors"
-                onClick={() => goToDetail(stock.symbol)}
-              >
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="font-semibold text-slate-800 group-hover:text-indigo-600 transition-colors">
-                      {stock.symbol}
-                    </p>
-                    <span
-                      className={cn(
-                        "inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold",
-                        getChangeBgColor(stock.changePercent),
-                      )}
-                    >
-                      {stock.changePercent >= 0 ? "+" : ""}
-                      {stock.changePercent.toFixed(2)}%
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-500 truncate max-w-[200px]">{stock.name}</p>
-                </div>
-                <div className="text-right shrink-0 ml-3 flex items-center gap-2">
-                  <div>
-                    <p className="font-semibold text-slate-800">฿{stock.price.toFixed(2)}</p>
-                    <p className="text-xs text-slate-500">Vol: {formatVolume(stock.volume)}</p>
-                  </div>
-                  <ArrowUpRight size={13} className="text-slate-300 group-hover:text-indigo-400 transition-colors shrink-0" />
-                </div>
-              </div>
             ))}
-            {loading && stocks.length === 0 && (
-              <div className="divide-y divide-slate-100">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="flex items-center justify-between px-4 py-3 animate-pulse">
-                    <div className="space-y-1.5">
-                      <div className="h-3.5 w-16 rounded bg-slate-200" />
-                      <div className="h-2.5 w-32 rounded bg-slate-100" />
-                    </div>
-                    <div className="space-y-1.5 text-right">
-                      <div className="h-3.5 w-14 rounded bg-slate-200 ml-auto" />
-                      <div className="h-2.5 w-10 rounded bg-slate-100 ml-auto" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-            {!loading && filtered.length === 0 && (
-              <p className="py-12 text-center text-sm text-slate-400">{t("market.noResults")}</p>
-            )}
           </div>
 
-          {/* Desktop: full table */}
-          <div className="hidden md:block overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-200">
-                  {[
-                    { key: "symbol",        label: locale === "th" ? "สัญลักษณ์" : "Symbol", align: "left"  },
-                    { key: "price",         label: t("common.price"),          align: "right" },
-                    { key: "change",        label: t("common.change"),         align: "right" },
-                    { key: "changePercent", label: t("common.changePercent"),  align: "right" },
-                    { key: "volume",        label: t("common.volume"),         align: "right" },
-                    { key: "marketCap",     label: t("market.marketCap"),      align: "right" },
-                    { key: "peRatio",       label: t("market.peRatio"),        align: "right" },
-                    { key: "dividendYield", label: t("market.dividend"),       align: "right" },
-                  ].map((col) => (
-                    <th
-                      key={col.key}
-                      className={cn(
-                        "px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:text-slate-700 select-none whitespace-nowrap",
-                        col.align === "right" ? "text-right" : "text-left",
-                      )}
-                      onClick={() => handleSort(col.key as keyof Stock)}
-                    >
-                      {col.label}
-                      {sortField === col.key && (
-                        <span className="ml-1">{sortDir === "asc" ? "↑" : "↓"}</span>
-                      )}
-                    </th>
-                  ))}
-                  <th className="px-4 py-3 w-8" />
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((stock) => (
-                  <tr
-                    key={stock.symbol}
-                    className="border-b border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors group"
-                    onClick={() => goToDetail(stock.symbol)}
-                  >
-                    <td className="px-4 py-3">
-                      <p className="font-semibold text-slate-800 group-hover:text-indigo-600 transition-colors">
-                        {stock.symbol}
-                      </p>
-                      <p className="text-xs text-slate-500 max-w-[180px] truncate">{stock.name}</p>
-                    </td>
-                    <td className="px-4 py-3 text-right font-semibold text-slate-700">
-                      ฿{stock.price.toFixed(2)}
-                    </td>
-                    <td className={cn("px-4 py-3 text-right font-medium", getChangeColor(stock.change))}>
-                      {stock.change >= 0 ? "+" : ""}฿{stock.change.toFixed(2)}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <span
-                        className={cn(
-                          "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
-                          getChangeBgColor(stock.changePercent),
-                        )}
-                      >
-                        {formatPercent(stock.changePercent)}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatVolume(stock.volume)}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatMarketCap(stock.marketCap)}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">
-                      {stock.peRatio?.toFixed(1) ?? "—"}
-                    </td>
-                    <td className="px-4 py-3 text-right text-slate-600">
-                      {stock.dividendYield ? `${stock.dividendYield.toFixed(1)}%` : "—"}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <ArrowUpRight
-                        size={13}
-                        className="text-slate-300 group-hover:text-indigo-400 transition-colors"
-                      />
-                    </td>
-                  </tr>
-                ))}
-                {loading && stocks.length === 0 &&
-                  Array.from({ length: 6 }).map((_, i) => (
-                    <tr key={i} className="animate-pulse">
-                      <td className="px-4 py-3">
-                        <div className="space-y-1.5">
-                          <div className="h-3.5 w-16 rounded bg-slate-200" />
-                          <div className="h-2.5 w-28 rounded bg-slate-100" />
-                        </div>
-                      </td>
-                      {Array.from({ length: 8 }).map((__, j) => (
-                        <td key={j} className="px-4 py-3 text-right">
-                          <div className="h-3.5 w-14 rounded bg-slate-200 ml-auto" />
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                {!loading && filtered.length === 0 && (
-                  <tr>
-                    <td colSpan={9} className="py-12 text-center text-sm text-slate-400">
-                      {t("market.noResults")}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+          <div className="flex-1 min-w-[220px]">
+            <MarketSearch
+              value={search}
+              onValueChange={setSearch}
+              onSelectSymbol={goToDetail}
+              variant="desktop"
+            />
           </div>
-        </CardContent>
-      </Card>
+          <div className="text-xs text-slate-400 ml-auto">
+            {assetLoading
+              ? locale === "th"
+                ? "กำลังโหลดข้อมูล..."
+                : "Loading..."
+              : locale === "th"
+                ? `แสดง ${visibleStocks.length} รายการ`
+                : `Showing ${visibleStocks.length} items`}
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-slate-500">
+            {locale === "th"
+              ? "เลือกหมวดสินทรัพย์เพื่อหลีกเลี่ยงข้อจำกัด rate limit"
+              : "Switch asset tabs to avoid rate-limit constraints"}
+          </p>
+        </div>
+      </div>
+
+      {/* ── Stock Screener Table ─────────────────────────────────────────── */}
+      <StockScreenerTable
+        title={locale === "th" ? "คัดกรองหุ้น" : "Stock Screener"}
+        rows={visibleStocks}
+        loading={loading || assetLoading}
+        locale={locale}
+        emptyMessage={t("market.noResults")}
+        getRowId={(r) => r.symbol}
+        onRowClick={(r) => goToDetail(r.symbol)}
+        columns={[
+          {
+            key: "symbol",
+            label: locale === "th" ? "สัญลักษณ์ / ชื่อ" : "Symbol / Name",
+            align: "left",
+            sortable: true,
+            sortValue: (r) => r.symbol,
+            render: (r) => (
+              <div>
+                <p className="font-semibold text-slate-800 group-hover:text-indigo-600 transition-colors">
+                  {r.symbol}
+                </p>
+                <p className="text-xs text-slate-500 max-w-[220px] truncate">{r.name}</p>
+              </div>
+            ),
+          },
+          {
+            key: "sector",
+            label: locale === "th" ? "กลุ่มอุตสาหกรรม" : "Sector",
+            align: "left",
+            sortable: true,
+            sortValue: (r) => r.sector,
+            render: (r) =>
+              r.sector ? (
+                <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+                  {r.sector}
+                </span>
+              ) : (
+                "—"
+              ),
+          },
+          {
+            key: "price",
+            label: t("common.price"),
+            align: "right",
+            sortable: true,
+            sortValue: (r) => r.price,
+            render: (r) => (
+              <span className="font-semibold text-slate-700">{r.price.toFixed(2)}</span>
+            ),
+          },
+          {
+            key: "changePercent",
+            label: t("common.changePercent"),
+            align: "right",
+            sortable: true,
+            sortValue: (r) => r.changePercent,
+            render: (r) => (
+              <span
+                className={cn(
+                  "inline-flex items-center justify-center min-w-[72px] px-2 py-0.5 rounded-full text-xs font-semibold",
+                  getChangeBgColor(r.changePercent),
+                )}
+              >
+                {formatPercent(r.changePercent)}
+              </span>
+            ),
+          },
+          {
+            key: "change",
+            label: t("common.change"),
+            align: "right",
+            sortable: true,
+            sortValue: (r) => r.change,
+            render: (r) => (
+              <span className={cn("font-medium", getChangeColor(r.change))}>
+                {r.change >= 0 ? "+" : ""}
+                {r.change.toFixed(2)}
+              </span>
+            ),
+          },
+          {
+            key: "volume",
+            label: t("common.volume"),
+            align: "right",
+            sortable: true,
+            sortValue: (r) => r.volume,
+            render: (r) => <span className="text-slate-600">{formatVolume(r.volume)}</span>,
+          },
+          {
+            key: "marketCap",
+            label: t("market.marketCap"),
+            align: "right",
+            sortable: true,
+            sortValue: (r) => r.marketCap,
+            render: (r) => (
+              <span className="text-slate-600">{formatMarketCap(r.marketCap)}</span>
+            ),
+          },
+          {
+            key: "peRatio",
+            label: t("market.peRatio"),
+            align: "right",
+            sortable: true,
+            sortValue: (r) => r.peRatio ?? null,
+            render: (r) => <span className="text-slate-600">{r.peRatio?.toFixed(1) ?? "—"}</span>,
+          },
+          {
+            key: "dividendYield",
+            label: t("market.dividend"),
+            align: "right",
+            sortable: true,
+            sortValue: (r) => r.dividendYield ?? null,
+            render: (r) => (
+              <span className="text-slate-600">
+                {r.dividendYield ? `${r.dividendYield.toFixed(1)}%` : "—"}
+              </span>
+            ),
+          },
+        ]}
+        renderMobileRow={(r) => (
+          <div className="flex items-center justify-between">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <p className="font-semibold text-slate-800 group-hover:text-indigo-600 transition-colors">
+                  {r.symbol}
+                </p>
+                <span
+                  className={cn(
+                    "inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold",
+                    getChangeBgColor(r.changePercent),
+                  )}
+                >
+                  {r.changePercent >= 0 ? "+" : ""}
+                  {r.changePercent.toFixed(2)}%
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 truncate max-w-[200px]">{r.name}</p>
+            </div>
+            <div className="text-right shrink-0 ml-3 flex items-center gap-2">
+              <div>
+                <p className="font-semibold text-slate-800">{r.price.toFixed(2)}</p>
+                <p className="text-xs text-slate-500">Vol: {formatVolume(r.volume)}</p>
+              </div>
+              <ArrowUpRight
+                size={13}
+                className="text-slate-300 group-hover:text-indigo-400 transition-colors shrink-0"
+              />
+            </div>
+          </div>
+        )}
+      />
     </div>
   );
 }

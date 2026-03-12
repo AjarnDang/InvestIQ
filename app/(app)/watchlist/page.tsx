@@ -27,6 +27,7 @@ import type { WatchlistItem } from "@/src/types";
 import { formatDate } from "@/src/utils/formatters";
 import { getChangeColor, getChangeBgColor, cn } from "@/src/utils/helpers";
 import { useTranslations } from "@/src/i18n/useTranslations";
+import { StockScreenerTable } from "@/components/market/StockScreenerTable";
 
 export default function WatchlistPage() {
   const router   = useRouter();
@@ -126,7 +127,7 @@ export default function WatchlistPage() {
                       <p className="font-semibold text-slate-800">{s.symbol}</p>
                       <p className="text-xs text-slate-500 truncate">{s.name}</p>
                     </div>
-                    <div className="text-right flex-shrink-0 ml-4">
+                    <div className="text-right shrink-0 ml-4">
                       <p className="text-sm font-medium text-slate-700">฿{s.price.toFixed(2)}</p>
                       <span className={cn("text-xs font-semibold", getChangeColor(s.changePercent))}>
                         {s.changePercent >= 0 ? "+" : ""}{s.changePercent.toFixed(2)}%
@@ -154,75 +155,85 @@ export default function WatchlistPage() {
           </CardContent>
         </Card>
       ) : (
-        /* Responsive grid: 1 col mobile, 2 cols tablet, 3 cols desktop */
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {items.map((item: WatchlistItem) => (
-            <Card key={item.symbol} className="group overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={() => router.push(`/stocks/${encodeURIComponent(item.symbol)}`)}>
-              <CardContent className="p-4 md:p-5">
-                {/* Header */}
-                <div className="flex items-start justify-between">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-bold text-slate-800 text-xl leading-none group-hover:text-indigo-600 transition-colors">{item.symbol}</h3>
-                      <Badge variant="default" className="text-xs">{item.sector}</Badge>
-                    </div>
-                    <p className="mt-1 text-xs text-slate-500 truncate">{item.name}</p>
-                  </div>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); dispatch(removeItem(item.symbol)); }}
-                    className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-300 hover:bg-red-50 hover:text-red-500 transition-colors flex-shrink-0 ml-2"
-                    title="Remove from watchlist"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-
-                {/* Price + Change */}
-                <div className="mt-4">
-                  <div className="flex items-end justify-between">
-                    <div>
-                      <p className="text-2xl font-bold text-slate-900 leading-none">
-                        ฿{item.price.toFixed(2)}
-                      </p>
-                      <div
-                        className={cn(
-                          "mt-2 inline-flex items-center gap-1 text-sm font-semibold px-2 py-0.5 rounded-full",
-                          getChangeBgColor(item.changePercent)
-                        )}
-                      >
-                        {item.changePercent >= 0 ? (
-                          <TrendingUp size={12} />
-                        ) : (
-                          <TrendingDown size={12} />
-                        )}
-                        {item.changePercent >= 0 ? "+" : ""}
-                        {item.changePercent.toFixed(2)}%
-                      </div>
-                    </div>
-                    <p className="text-xs text-slate-400 self-end">
-                      {formatDate(item.addedAt)}
+        <StockScreenerTable
+          title={t("watchlist.title")}
+          rows={items}
+          loading={false}
+          locale={locale}
+          emptyMessage={t("watchlist.emptyTitle")}
+          getRowId={(r) => r.symbol}
+          onRowClick={(r) => router.push(`/stocks/${encodeURIComponent(r.symbol)}`)}
+          columns={[
+            {
+              key: "symbol",
+              label: locale === "th" ? "สัญลักษณ์ / ชื่อ" : "Symbol / Name",
+              align: "left",
+              sortable: true,
+              sortValue: (r) => r.symbol,
+              render: (r) => (
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="font-semibold text-slate-800 group-hover:text-indigo-600 transition-colors">
+                      {r.symbol}
                     </p>
+                    <Badge variant="default" className="text-xs whitespace-nowrap">
+                      {r.sector}
+                    </Badge>
                   </div>
+                  <p className="text-xs text-slate-500 max-w-[220px] truncate">{r.name}</p>
                 </div>
-
-                {/* Alert Section */}
-                <div className="mt-4 pt-4 border-t border-slate-100" onClick={(e) => e.stopPropagation()}>
-                  {editAlert === item.symbol ? (
+              ),
+            },
+            {
+              key: "price",
+              label: t("common.price"),
+              align: "right",
+              sortable: true,
+              sortValue: (r) => r.price,
+              render: (r) => <span className="font-semibold text-slate-800">฿{r.price.toFixed(2)}</span>,
+            },
+            {
+              key: "changePercent",
+              label: t("common.changePercent"),
+              align: "right",
+              sortable: true,
+              sortValue: (r) => r.changePercent,
+              render: (r) => (
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full",
+                    getChangeBgColor(r.changePercent),
+                  )}
+                >
+                  {r.changePercent >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                  {r.changePercent >= 0 ? "+" : ""}
+                  {r.changePercent.toFixed(2)}%
+                </span>
+              ),
+            },
+            {
+              key: "alert",
+              label: locale === "th" ? "แจ้งเตือน" : "Alert",
+              align: "left",
+              sortable: false,
+              render: (r) => (
+                <div onClick={(e) => e.stopPropagation()}>
+                  {editAlert === r.symbol ? (
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-slate-500 flex-shrink-0">Alert ฿</span>
+                      <span className="text-xs text-slate-500 shrink-0">Alert ฿</span>
                       <input
                         autoFocus
                         value={alertInput}
                         onChange={(e) => setAlertInput(e.target.value)}
                         onKeyDown={(e) => {
-                          if (e.key === "Enter") handleSaveAlert(item.symbol);
+                          if (e.key === "Enter") handleSaveAlert(r.symbol);
                           if (e.key === "Escape") setEditAlert(null);
                         }}
                         placeholder={locale === "th" ? "ราคาเป้าหมาย" : "Target price"}
-                        className="flex-1 h-8 rounded-lg border border-slate-200 px-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 min-w-0"
+                        className="w-28 h-8 rounded-lg border border-slate-200 px-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         type="number"
                       />
-                      <Button size="icon-sm" variant="primary" onClick={() => handleSaveAlert(item.symbol)}>
+                      <Button size="icon-sm" variant="primary" onClick={() => handleSaveAlert(r.symbol)}>
                         ✓
                       </Button>
                       <Button size="icon-sm" variant="ghost" onClick={() => setEditAlert(null)}>
@@ -230,25 +241,25 @@ export default function WatchlistPage() {
                       </Button>
                     </div>
                   ) : (
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 min-w-0">
-                        {item.alertEnabled ? (
-                          <Bell size={13} className="text-indigo-600 flex-shrink-0" />
-                        ) : (
-                          <BellOff size={13} className="text-slate-400 flex-shrink-0" />
-                        )}
-                        <span className="text-xs text-slate-500 truncate">
-                          {item.alertEnabled && item.alertPrice
-                            ? `${t("watchlist.alertPrice")}: ฿${item.alertPrice.toFixed(2)}`
-                            : locale === "th" ? "ไม่ได้ตั้งการแจ้งเตือน" : "No alert set"}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1 flex-shrink-0 ml-2">
-                        {item.alertEnabled && (
+                    <div className="flex items-center gap-2">
+                      {r.alertEnabled ? (
+                        <Bell size={13} className="text-indigo-600 shrink-0" />
+                      ) : (
+                        <BellOff size={13} className="text-slate-400 shrink-0" />
+                      )}
+                      <span className="text-xs text-slate-500 truncate max-w-[180px]">
+                        {r.alertEnabled && r.alertPrice
+                          ? `${t("watchlist.alertPrice")}: ฿${r.alertPrice.toFixed(2)}`
+                          : locale === "th"
+                            ? "ไม่ได้ตั้งการแจ้งเตือน"
+                            : "No alert set"}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        {r.alertEnabled && (
                           <Button
                             size="icon-sm"
                             variant="ghost"
-                            onClick={() => dispatch(toggleAlert({ symbol: item.symbol, enabled: false }))}
+                            onClick={() => dispatch(toggleAlert({ symbol: r.symbol, enabled: false }))}
                             title="Disable alert"
                           >
                             <BellOff size={12} />
@@ -258,8 +269,8 @@ export default function WatchlistPage() {
                           size="icon-sm"
                           variant="ghost"
                           onClick={() => {
-                            setEditAlert(item.symbol);
-                            setAlertInput(item.alertPrice?.toString() ?? "");
+                            setEditAlert(r.symbol);
+                            setAlertInput(r.alertPrice?.toString() ?? "");
                           }}
                           title="Set alert price"
                         >
@@ -269,10 +280,103 @@ export default function WatchlistPage() {
                     </div>
                   )}
                 </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+              ),
+            },
+            {
+              key: "addedAt",
+              label: locale === "th" ? "เพิ่มเมื่อ" : "Added",
+              align: "right",
+              sortable: true,
+              sortValue: (r) => r.addedAt,
+              render: (r) => <span className="text-xs text-slate-400">{formatDate(r.addedAt)}</span>,
+            },
+            {
+              key: "actions",
+              label: "",
+              align: "right",
+              sortable: false,
+              render: (r) => (
+                <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    onClick={() => dispatch(removeItem(r.symbol))}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-300 hover:bg-red-50 hover:text-red-500 transition-colors"
+                    title="Remove from watchlist"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ),
+              widthClassName: "w-12",
+            },
+          ]}
+          renderMobileRow={(r) => (
+            <div className="space-y-2">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="font-bold text-slate-800 text-lg leading-none group-hover:text-indigo-600 transition-colors">
+                      {r.symbol}
+                    </p>
+                    <Badge variant="default" className="text-xs">
+                      {r.sector}
+                    </Badge>
+                    <span
+                      className={cn(
+                        "inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full",
+                        getChangeBgColor(r.changePercent),
+                      )}
+                    >
+                      {r.changePercent >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                      {r.changePercent >= 0 ? "+" : ""}
+                      {r.changePercent.toFixed(2)}%
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-slate-500 truncate">{r.name}</p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-xl font-bold text-slate-900 leading-none">฿{r.price.toFixed(2)}</p>
+                  <p className="text-xs text-slate-400 mt-1">{formatDate(r.addedAt)}</p>
+                </div>
+              </div>
+              <div onClick={(e) => e.stopPropagation()} className="flex items-center justify-between">
+                <div className="flex items-center gap-2 min-w-0">
+                  {r.alertEnabled ? (
+                    <Bell size={13} className="text-indigo-600 shrink-0" />
+                  ) : (
+                    <BellOff size={13} className="text-slate-400 shrink-0" />
+                  )}
+                  <span className="text-xs text-slate-500 truncate">
+                    {r.alertEnabled && r.alertPrice
+                      ? `${t("watchlist.alertPrice")}: ฿${r.alertPrice.toFixed(2)}`
+                      : locale === "th"
+                        ? "ไม่ได้ตั้งการแจ้งเตือน"
+                        : "No alert set"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button
+                    size="icon-sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setEditAlert(r.symbol);
+                      setAlertInput(r.alertPrice?.toString() ?? "");
+                    }}
+                    title="Set alert price"
+                  >
+                    <Bell size={12} />
+                  </Button>
+                  <button
+                    onClick={() => dispatch(removeItem(r.symbol))}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-300 hover:bg-red-50 hover:text-red-500 transition-colors"
+                    title="Remove from watchlist"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        />
       )}
     </div>
   );

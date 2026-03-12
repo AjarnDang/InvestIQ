@@ -26,6 +26,7 @@ import {
 import { getChangeColor, cn } from "@/src/utils/helpers";
 import { ProfileTabsBar } from "@/components/layout/ProfileTabsBar";
 import { useTranslations } from "@/src/i18n/useTranslations";
+import { StockScreenerTable } from "@/components/market/StockScreenerTable";
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
@@ -304,24 +305,123 @@ export default function DashboardPage() {
       {/* ── Holdings tab ─────────────────────────────────────────────────── */}
       {tab === "holdings" && (
         <>
-          {/* Mobile: cards */}
-          <div className="grid grid-cols-1 gap-3 md:hidden">
-            {holdings.map((h) => (
-              <Card key={h.symbol} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => router.push(`/stocks/${encodeURIComponent(h.symbol)}`)}>
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">{h.symbol}</p>
-                        <Badge variant="default" className="text-xs">{h.sector}</Badge>
-                      </div>
-                      <p className="text-xs text-slate-500 truncate mt-0.5">{h.name}</p>
-                    </div>
-                    <div className="text-right shrink-0 ml-3">
-                      <p className="font-semibold text-slate-800">{formatCurrency(h.marketValue)}</p>
-                      <p className="text-xs text-slate-500">{h.weight.toFixed(1)}%</p>
+          <StockScreenerTable
+            title={t("dashboard.holdings")}
+            rows={holdings}
+            loading={false}
+            locale={locale}
+            emptyMessage={locale === "th" ? "ไม่พบหุ้น" : "No holdings found"}
+            getRowId={(r) => r.symbol}
+            onRowClick={(r) => router.push(`/stocks/${encodeURIComponent(r.symbol)}`)}
+            columns={[
+              {
+                key: "symbol",
+                label: locale === "th" ? "สัญลักษณ์" : "Symbol",
+                align: "left",
+                sortable: true,
+                sortValue: (r) => r.symbol,
+                render: (r) => (
+                  <div>
+                    <p className="font-semibold text-slate-800 group-hover:text-indigo-600 transition-colors">
+                      {r.symbol}
+                    </p>
+                    <p className="text-xs text-slate-500 max-w-[160px] truncate">{r.name}</p>
+                  </div>
+                ),
+              },
+              {
+                key: "sector",
+                label: t("dashboard.sector"),
+                align: "left",
+                sortable: true,
+                sortValue: (r) => r.sector,
+                render: (r) => (
+                  <Badge variant="default" className="text-xs whitespace-nowrap">
+                    {r.sector}
+                  </Badge>
+                ),
+              },
+              {
+                key: "qty",
+                label: locale === "th" ? "จำนวน" : "Qty",
+                align: "right",
+                sortable: true,
+                sortValue: (r) => r.quantity,
+                render: (r) => formatInteger(r.quantity),
+              },
+              {
+                key: "avgCost",
+                label: t("dashboard.avgCost"),
+                align: "right",
+                sortable: true,
+                sortValue: (r) => r.avgCost,
+                render: (r) => `฿${r.avgCost.toFixed(2)}`,
+              },
+              {
+                key: "price",
+                label: t("dashboard.currentPrice"),
+                align: "right",
+                sortable: true,
+                sortValue: (r) => r.currentPrice,
+                render: (r) => `฿${r.currentPrice.toFixed(2)}`,
+              },
+              {
+                key: "marketValue",
+                label: locale === "th" ? "มูลค่าตลาด" : "Market Value",
+                align: "right",
+                sortable: true,
+                sortValue: (r) => r.marketValue,
+                render: (r) => formatCurrency(r.marketValue),
+              },
+              {
+                key: "pnl",
+                label: "P&L",
+                align: "right",
+                sortable: true,
+                sortValue: (r) => r.unrealizedPnL,
+                render: (r) => (
+                  <div className="text-right">
+                    <p className={cn("font-semibold", getChangeColor(r.unrealizedPnL))}>
+                      {r.unrealizedPnL >= 0 ? "+" : ""}
+                      {formatCurrency(r.unrealizedPnL)}
+                    </p>
+                    <p className={cn("text-xs", getChangeColor(r.unrealizedPnLPercent))}>
+                      {formatPercent(r.unrealizedPnLPercent)}
+                    </p>
+                  </div>
+                ),
+              },
+              {
+                key: "weight",
+                label: t("dashboard.weight"),
+                align: "right",
+                sortable: true,
+                sortValue: (r) => r.weight,
+                render: (r) => (
+                  <div className="flex items-center justify-end gap-2">
+                    <span className="text-slate-600">{r.weight.toFixed(1)}%</span>
+                    <div className="w-12 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-indigo-500 rounded-full"
+                        style={{ width: `${Math.min(r.weight, 100)}%` }}
+                      />
                     </div>
                   </div>
+                ),
+              },
+            ]}
+            renderMobileRow={(h) => (
+              <div className="flex items-start justify-between">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">
+                      {h.symbol}
+                    </p>
+                    <Badge variant="default" className="text-xs">
+                      {h.sector}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-slate-500 truncate mt-0.5">{h.name}</p>
                   <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
                     <div>
                       <p className="text-slate-400">{locale === "th" ? "จำนวน" : "Qty"}</p>
@@ -336,33 +436,23 @@ export default function DashboardPage() {
                       <p className="font-medium text-slate-700">฿{h.currentPrice.toFixed(2)}</p>
                     </div>
                   </div>
-                  <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between">
-                    <span className="text-xs text-slate-500">{locale === "th" ? "กำไร/ขาดทุนที่ยังไม่รับรู้" : "Unrealized P&L"}</span>
-                    <div className="text-right">
-                      <p className={`text-sm font-bold ${getChangeColor(h.unrealizedPnL)}`}>
-                        {h.unrealizedPnL >= 0 ? "+" : ""}{formatCurrency(h.unrealizedPnL)}
-                      </p>
-                      <p className={`text-xs ${getChangeColor(h.unrealizedPnLPercent)}`}>
-                        {formatPercent(h.unrealizedPnLPercent)}
-                      </p>
-                    </div>
+                </div>
+                <div className="text-right shrink-0 ml-3">
+                  <p className="font-semibold text-slate-800">{formatCurrency(h.marketValue)}</p>
+                  <p className="text-xs text-slate-500">{h.weight.toFixed(1)}%</p>
+                  <div className="mt-2">
+                    <p className={cn("text-sm font-bold", getChangeColor(h.unrealizedPnL))}>
+                      {h.unrealizedPnL >= 0 ? "+" : ""}
+                      {formatCurrency(h.unrealizedPnL)}
+                    </p>
+                    <p className={cn("text-xs", getChangeColor(h.unrealizedPnLPercent))}>
+                      {formatPercent(h.unrealizedPnLPercent)}
+                    </p>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          {/* Desktop: table */}
-          <Card className="hidden md:block">
-            <CardContent className="px-0 pb-0 pt-0">
-              <DataTable
-                columns={columns}
-                data={holdings as (Holding & Record<string, unknown>)[]}
-                emptyMessage={locale === "th" ? "ไม่พบหุ้น" : "No holdings found"}
-                onRowClick={(row) => router.push(`/stocks/${encodeURIComponent(row.symbol as string)}`)}
-              />
-            </CardContent>
-          </Card>
+                </div>
+              </div>
+            )}
+          />
         </>
       )}
     </div>

@@ -31,6 +31,7 @@ import { SET_REGION } from "@/src/data/indices";
 import { LEARN_TOPICS, LEARN_TOPICS_EN, MOCK_ARTICLES, MOCK_ARTICLES_EN } from "@/src/data/landingContent";
 import { getSourceBadgeClass } from "@/src/data/newsConfig";
 import { useTranslations } from "@/src/i18n/useTranslations";
+import { StockScreenerTable } from "@/components/market/StockScreenerTable";
 
 const NEWS_PREVIEW = 7;
 
@@ -588,141 +589,141 @@ export default function HomePage() {
                     </span>
                   </div>
 
-                  {/* Desktop: table layout */}
-                  <div className="hidden sm:block bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-                    <div className="grid grid-cols-[20px_1fr_90px_90px_90px] gap-x-3 px-5 py-2.5 text-[10px] font-semibold text-slate-400 uppercase tracking-wider bg-slate-50 border-b border-slate-100">
-                      <span>#</span>
-                      <span>Symbol</span>
-                      <span className="text-right">Price (USD)</span>
-                      <span className="text-right">Change</span>
-                      <span className="text-right">%Change</span>
-                    </div>
-                    <div className="divide-y divide-slate-50">
-                      {loadingTrending && trendingStocks.length === 0
-                        ? Array.from({ length: 8 }).map((_, i) => (
-                            <div
-                              key={i}
-                              className="flex items-center gap-3 px-5 py-3 animate-pulse"
-                            >
-                              <div className="h-3 w-4 rounded bg-slate-100 shrink-0" />
-                              <div className="flex-1 space-y-1">
-                                <div className="h-3.5 w-14 rounded bg-slate-200" />
-                                <div className="h-3 w-20 rounded bg-slate-100" />
-                              </div>
-                              <div className="h-4 w-16 rounded bg-slate-200" />
-                              <div className="h-4 w-16 rounded bg-slate-100" />
-                              <div className="h-5 w-16 rounded bg-slate-200" />
-                            </div>
-                          ))
-                        : trendingStocks.map((stock, i) => (
-                            <div
-                              key={stock.symbol}
-                              onClick={() => goToStock(stock.symbol)}
-                              className="grid grid-cols-[20px_1fr_90px_90px_90px] gap-x-3 px-5 py-2.5 items-center hover:bg-slate-50/60 transition-colors group cursor-pointer"
-                            >
-                              <span className="text-xs text-slate-300 tabular-nums">
-                                {i + 1}
-                              </span>
-                              <div>
-                                <p className="text-sm font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">
-                                  {stock.symbol}
-                                </p>
-                                <p className="text-[10px] text-slate-400 truncate max-w-[140px]">
-                                  {stock.name}
-                                </p>
-                              </div>
-                              <span className="text-sm font-semibold text-slate-700 text-right tabular-nums">
-                                $
-                                {stock.price.toLocaleString("en-US", {
-                                  minimumFractionDigits: 2,
-                                  maximumFractionDigits: 2,
-                                })}
-                              </span>
-                              <span
-                                className={cn(
-                                  "text-xs font-semibold text-right tabular-nums",
-                                  getChangeColor(stock.change),
-                                )}
-                              >
-                                {stock.change >= 0 ? "+" : ""}$
-                                {Math.abs(stock.change).toFixed(2)}
-                              </span>
-                              <div className="flex justify-end">
-                                <span
-                                  className={cn(
-                                    "text-xs font-bold px-2 py-0.5 rounded tabular-nums",
-                                    stock.changePercent >= 0
-                                      ? "bg-emerald-50 text-emerald-700"
-                                      : "bg-red-50 text-red-600",
-                                  )}
-                                >
-                                  {stock.changePercent >= 0 ? "+" : ""}
-                                  {stock.changePercent.toFixed(2)}%
-                                </span>
-                              </div>
-                            </div>
-                          ))}
-                    </div>
-                  </div>
-
-                  {/* Mobile: horizontal scroll cards */}
-                  <div className="sm:hidden flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
-                    {loadingTrending && trendingStocks.length === 0
-                      ? Array.from({ length: 6 }).map((_, i) => (
-                          <div
-                            key={i}
-                            className="shrink-0 rounded-xl border border-slate-200 bg-white px-3.5 py-3 w-[140px] animate-pulse space-y-2"
-                          >
-                            <div className="h-3.5 w-10 rounded bg-slate-200" />
-                            <div className="h-3 w-16 rounded bg-slate-100" />
-                            <div className="h-5 w-14 rounded bg-slate-200 mt-1" />
-                            <div className="h-3 w-12 rounded bg-slate-100" />
+                  <StockScreenerTable
+                    title={locale === "th" ? "Today's Hot Stocks" : "Today's Hot Stocks"}
+                    rows={trendingStocks.map((s, i) => ({ ...s, rank: i + 1 }))}
+                    loading={loadingTrending}
+                    locale={locale}
+                    emptyMessage={locale === "th" ? "ไม่มีข้อมูล" : "No data"}
+                    getRowId={(r) => r.symbol}
+                    onRowClick={(r) => goToStock(r.symbol)}
+                    columns={[
+                      {
+                        key: "rank",
+                        label: "#",
+                        align: "left",
+                        sortable: false,
+                        render: (r) => (
+                          <span className="text-xs text-slate-300 tabular-nums">{r.rank}</span>
+                        ),
+                        widthClassName: "w-10",
+                      },
+                      {
+                        key: "symbol",
+                        label: "Symbol",
+                        align: "left",
+                        sortable: true,
+                        sortValue: (r) => r.symbol,
+                        render: (r) => (
+                          <div>
+                            <p className="text-sm font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">
+                              {r.symbol}
+                            </p>
+                            <p className="text-[10px] text-slate-400 truncate max-w-[160px]">
+                              {r.name}
+                            </p>
                           </div>
-                        ))
-                      : trendingStocks.map((stock) => (
-                          <div
-                            key={stock.symbol}
-                            onClick={() => goToStock(stock.symbol)}
-                            className="shrink-0 flex flex-col rounded-xl border border-slate-200 bg-white px-3.5 py-3 w-[148px] cursor-pointer hover:border-indigo-200 hover:shadow-sm transition-all"
+                        ),
+                      },
+                      {
+                        key: "price",
+                        label: locale === "th" ? "ราคา (USD)" : "Price (USD)",
+                        align: "right",
+                        sortable: true,
+                        sortValue: (r) => r.price,
+                        render: (r) => (
+                          <span className="text-sm font-semibold text-slate-700 text-right tabular-nums">
+                            $
+                            {r.price.toLocaleString("en-US", {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })}
+                          </span>
+                        ),
+                      },
+                      {
+                        key: "change",
+                        label: locale === "th" ? "เปลี่ยนแปลง" : "Change",
+                        align: "right",
+                        sortable: true,
+                        sortValue: (r) => r.change,
+                        render: (r) => (
+                          <span
+                            className={cn(
+                              "text-xs font-semibold text-right tabular-nums",
+                              getChangeColor(r.change),
+                            )}
                           >
-                            <div className="flex justify-between mb-0.5">
-                              <span className="text-sm font-bold text-slate-800">
-                                {stock.symbol}
-                              </span>
-                              <span
-                                className={cn(
-                                  "text-[9px] font-bold px-1.5 py-0.5 rounded-full",
-                                  stock.changePercent >= 0
-                                    ? "bg-emerald-50 text-emerald-700"
-                                    : "bg-red-50 text-red-600",
-                                )}
-                              >
-                                {stock.changePercent >= 0 ? "▲" : "▼"}
-                                {Math.abs(stock.changePercent).toFixed(2)}%
-                              </span>
-                            </div>
-                            <p className="text-[10px] text-slate-400 truncate mb-2">
-                              {stock.name}
-                            </p>
-                            <p className="text-base font-bold text-slate-900 tabular-nums">
-                              $
-                              {stock.price.toLocaleString("en-US", {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                              })}
-                            </p>
-                            <p
+                            {r.change >= 0 ? "+" : ""}$
+                            {Math.abs(r.change).toFixed(2)}
+                          </span>
+                        ),
+                      },
+                      {
+                        key: "changePercent",
+                        label: "%Change",
+                        align: "right",
+                        sortable: true,
+                        sortValue: (r) => Math.abs(r.changePercent),
+                        render: (r) => (
+                          <div className="flex justify-end">
+                            <span
                               className={cn(
-                                "text-xs font-semibold mt-0.5 tabular-nums",
-                                getChangeColor(stock.changePercent),
+                                "text-xs font-bold px-2 py-0.5 rounded tabular-nums",
+                                r.changePercent >= 0
+                                  ? "bg-emerald-50 text-emerald-700"
+                                  : "bg-red-50 text-red-600",
                               )}
                             >
-                              {stock.change >= 0 ? "+" : ""}$
-                              {Math.abs(stock.change).toFixed(2)}
-                            </p>
+                              {r.changePercent >= 0 ? "+" : ""}
+                              {r.changePercent.toFixed(2)}%
+                            </span>
                           </div>
-                        ))}
-                  </div>
+                        ),
+                      },
+                    ]}
+                    renderMobileRow={(r) => (
+                      <div className="flex items-center justify-between">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">
+                              {r.symbol}
+                            </p>
+                            <span
+                              className={cn(
+                                "text-[9px] font-bold px-1.5 py-0.5 rounded-full",
+                                r.changePercent >= 0
+                                  ? "bg-emerald-50 text-emerald-700"
+                                  : "bg-red-50 text-red-600",
+                              )}
+                            >
+                              {r.changePercent >= 0 ? "▲" : "▼"}
+                              {Math.abs(r.changePercent).toFixed(2)}%
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-slate-400 truncate">{r.name}</p>
+                        </div>
+                        <div className="text-right shrink-0 ml-3">
+                          <p className="text-base font-bold text-slate-900 tabular-nums">
+                            $
+                            {r.price.toLocaleString("en-US", {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })}
+                          </p>
+                          <p
+                            className={cn(
+                              "text-xs font-semibold mt-0.5 tabular-nums",
+                              getChangeColor(r.change),
+                            )}
+                          >
+                            {r.change >= 0 ? "+" : ""}$
+                            {Math.abs(r.change).toFixed(2)}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  />
                 </div>
 
                 {/* ══ 5. LEARN ══════════════════════════════════════════════ */}

@@ -4,8 +4,8 @@ import React, { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAppDispatch, useAppSelector } from "@/src/store/hooks";
-import { rehydrateAuth, setInitialized } from "@/src/slices/authSlice";
-import { getAuthSession } from "@/src/functions/authFunctions";
+import { rehydrateAuth, setInitialized, logout } from "@/src/slices/authSlice";
+import { getAuthSession, getSessionRemainingMs } from "@/src/functions/authFunctions";
 import { TrendingUp, Lock, LogIn } from "lucide-react";
 import { PROFILE_NAV_ITEMS } from "@/src/data/navigation";
 import { useTranslations } from "@/src/i18n/useTranslations";
@@ -29,6 +29,35 @@ export function AuthGuard({ children }: AuthGuardProps) {
     } else {
       dispatch(setInitialized());
     }
+  }, [dispatch]);
+
+  // Auto-logout after 24 hours from login (checks on mount + schedules logout)
+  useEffect(() => {
+    const session = getAuthSession();
+    if (!session) return;
+
+    const remaining = getSessionRemainingMs();
+    if (remaining === 0) {
+      dispatch(logout());
+      return;
+    }
+
+    // Fallback polling (handles clock changes / multi-tab)
+    const interval = setInterval(() => {
+      const s = getAuthSession();
+      if (!s) dispatch(logout());
+    }, 60_000);
+
+    // Precise timeout when TTL elapses
+    const timeout =
+      typeof remaining === "number" && remaining > 0
+        ? setTimeout(() => dispatch(logout()), remaining)
+        : null;
+
+    return () => {
+      clearInterval(interval);
+      if (timeout) clearTimeout(timeout);
+    };
   }, [dispatch]);
 
   const requiresAuth = PROTECTED_PATHS.some(
