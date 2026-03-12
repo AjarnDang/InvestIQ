@@ -1,4 +1,4 @@
-"use client";
+ "use client";
 
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
@@ -9,7 +9,6 @@ import {
   ExternalLink,
   LayoutDashboard,
   Flame,
-  Activity,
   ArrowUpRight,
   TrendingUp,
   TrendingDown,
@@ -17,8 +16,6 @@ import {
   Clock,
   ChevronRight,
   Sparkles,
-  Globe2,
-  Gauge,
 } from "lucide-react";
 import { useAppSelector } from "@/src/store/hooks";
 import { Navbar } from "@/components/layout/Navbar";
@@ -32,105 +29,12 @@ import { LEARN_TOPICS, LEARN_TOPICS_EN, MOCK_ARTICLES, MOCK_ARTICLES_EN } from "
 import { getSourceBadgeClass } from "@/src/data/newsConfig";
 import { useTranslations } from "@/src/i18n/useTranslations";
 import { StockScreenerTable } from "@/components/market/StockScreenerTable";
+import { FearGreedCard } from "@/components/market/FearGreedCard";
+import { GlobalMarketsCard } from "@/components/market/GlobalMarketsCard";
+import { SectorLeadersCard } from "@/components/market/SectorLeadersCard";
+import { MarketHoursCard } from "@/components/market/MarketHoursCard";
 
 const NEWS_PREVIEW = 7;
-
-// ── Fear & Greed Gauge ────────────────────────────────────────────────────
-type TrendingStockItem = { changePercent: number };
-
-const FG_ZONES = [
-  { max: 25,  label: "Extreme Fear", color: "#ef4444", bg: "bg-red-50",    text: "text-red-500"     },
-  { max: 45,  label: "Fear",         color: "#f97316", bg: "bg-orange-50", text: "text-orange-500"  },
-  { max: 55,  label: "Neutral",      color: "#eab308", bg: "bg-yellow-50", text: "text-yellow-600"  },
-  { max: 75,  label: "Greed",        color: "#22c55e", bg: "bg-emerald-50",text: "text-emerald-600" },
-  { max: 100, label: "Extreme Greed",color: "#16a34a", bg: "bg-green-50",  text: "text-green-700"   },
-] as const;
-
-function getFGZone(value: number) {
-  return FG_ZONES.find((z) => value <= z.max) ?? FG_ZONES[FG_ZONES.length - 1];
-}
-
-function FearGreedCard({ trendingStocks }: { trendingStocks: TrendingStockItem[] }) {
-  const { t, locale } = useTranslations();
-  const value = useMemo(() => {
-    if (trendingStocks.length === 0) return 42;
-    const gainers = trendingStocks.filter((s) => s.changePercent > 0).length;
-    const ratio   = gainers / trendingStocks.length;
-    // weight by average magnitude for more sensitivity
-    const avgMagnitude = trendingStocks.reduce((sum, s) => sum + Math.abs(s.changePercent), 0) / trendingStocks.length;
-    const momentumBoost = Math.min((avgMagnitude / 5) * 10, 20); // max ±20 pts
-    const raw = ratio * 100 + (ratio > 0.5 ? momentumBoost : -momentumBoost);
-    return Math.max(5, Math.min(95, Math.round(raw)));
-  }, [trendingStocks]);
-
-  const zone = getFGZone(value);
-  // needle rotation: value 0→-90°, value 100→+90°
-  const rotation = (value / 100) * 180 - 90;
-
-  return (
-    <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-      <div className="flex items-center gap-2 px-4 py-3.5 border-b border-slate-100">
-        <Gauge size={14} className="text-slate-500" />
-        <h3 className="text-sm font-semibold text-slate-800">
-          {t("home.fearGreed")}
-        </h3>
-        <span className="ml-auto text-[10px] text-slate-400">
-          {locale === "th" ? "ตลาดสหรัฐฯ" : "US Market"}
-        </span>
-      </div>
-
-      <div className="px-4 py-4">
-        {/* Semicircle gauge */}
-        <div className="relative mx-auto w-40 h-20 overflow-hidden mb-3">
-          {/* Rainbow arc (conic-gradient half circle) */}
-          <div className="absolute inset-0 rounded-t-full"
-            style={{ background: "conic-gradient(from 270deg at 50% 100%, #ef4444 0deg, #f97316 36deg, #eab308 72deg, #22c55e 108deg, #16a34a 144deg, #16a34a 180deg, transparent 180deg)" }}
-          />
-          {/* White inner cutout */}
-          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 rounded-t-full bg-white"
-            style={{ width: "68%", height: "68%" }}
-          />
-          {/* Needle */}
-          <div
-            className="absolute bottom-0 left-1/2 origin-bottom transition-transform duration-700"
-            style={{ transform: `translateX(-50%) rotate(${rotation}deg)`, width: "2px", height: "50%", background: "#1e293b", borderRadius: "2px 2px 0 0" }}
-          />
-          {/* Center dot */}
-          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 h-3 w-3 rounded-full bg-slate-800 border-2 border-white z-10" />
-        </div>
-
-        {/* Value + label */}
-        <div className="text-center mb-3">
-          <span className={cn("text-3xl font-black tabular-nums", zone.text)}>
-            {value}
-          </span>
-          <p className={cn("text-xs font-bold mt-0.5", zone.text)}>{zone.label}</p>
-        </div>
-
-        {/* Gradient bar */}
-        <div className="relative h-2.5 rounded-full overflow-hidden"
-          style={{ background: "linear-gradient(to right, #ef4444, #f97316, #eab308, #22c55e, #16a34a)" }}
-        >
-          <div
-            className="absolute top-1/2 -translate-y-1/2 h-4 w-4 rounded-full border-2 border-white shadow-md transition-all duration-700"
-            style={{ left: `calc(${value}% - 8px)`, background: zone.color }}
-          />
-        </div>
-        <div className="flex justify-between text-[9px] text-slate-400 mt-1">
-          <span>{locale === "th" ? "กลัว" : "Fear"}</span>
-          <span>{locale === "th" ? "ปกติ" : "Neutral"}</span>
-          <span>{locale === "th" ? "โลภ" : "Greed"}</span>
-        </div>
-
-        <p className="text-[10px] text-slate-400 text-center mt-2 leading-relaxed">
-          {locale === "th"
-            ? "คำนวณจาก US Trending Stocks · อัปเดตทุก 2 นาที"
-            : "Calculated from US trending stocks · updated every 2 minutes"}
-        </p>
-      </div>
-    </div>
-  );
-}
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 export default function HomePage() {
@@ -854,138 +758,11 @@ export default function HomePage() {
                 {/* ── Fear & Greed Index ──────────────────────────────── */}
                 <FearGreedCard trendingStocks={trendingStocks} />
 
-                {/* Global Markets */}
-                <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-                  <div className="flex items-center gap-2 px-4 py-3.5 border-b border-slate-100">
-                    <Globe2 size={14} className="text-slate-500" />
-                    <h3 className="text-sm font-semibold text-slate-800">
-                      {t("home.globalMarkets")}
-                    </h3>
-                  </div>
-                  {globalIndices.length === 0 ? (
-                    <div className="px-4 py-4 space-y-3 animate-pulse">
-                      {Array.from({ length: 4 }).map((_, i) => (
-                        <div
-                          key={i}
-                          className="flex justify-between items-center"
-                        >
-                          <div className="h-3.5 w-20 rounded bg-slate-200" />
-                          <div className="flex gap-2">
-                            <div className="h-3.5 w-14 rounded bg-slate-200" />
-                            <div className="h-5 w-14 rounded bg-slate-100" />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="divide-y divide-slate-50">
-                      {globalIndices.map((idx) => (
-                        <div
-                          key={idx.name}
-                          className="flex items-center justify-between px-4 py-2.5 hover:bg-slate-50 transition-colors"
-                        >
-                          <div className="flex items-center gap-1.5">
-                            <Activity size={10} className="text-slate-400" />
-                            <span className="text-xs text-slate-700 font-medium">
-                              {idx.name}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-slate-800 tabular-nums">
-                              {idx.value > 1000
-                                ? formatInteger(idx.value)
-                                : idx.value.toFixed(2)}
-                            </span>
-                            <span
-                              className={cn(
-                                "text-[10px] font-bold px-1.5 py-0.5 rounded tabular-nums",
-                                getChangeBgColor(idx.changePercent),
-                              )}
-                            >
-                              {idx.changePercent >= 0 ? "+" : ""}
-                              {idx.changePercent.toFixed(2)}%
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <GlobalMarketsCard indices={globalIndices} loading={loadingGlobal} />
 
                 <div className="space-y-4">
-                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
-                    <h3 className="text-sm font-semibold text-slate-800 mb-3">
-                      {locale === "th" ? "กลุ่มอุตสาหกรรมเด่น" : "Sector Leaders"}
-                    </h3>
-                    <div className="space-y-2.5">
-                      {[
-                        { sector: "Technology", pct: "+2.8%", positive: true },
-                        { sector: "Energy", pct: "+1.4%", positive: true },
-                        { sector: "Healthcare", pct: "+0.9%", positive: true },
-                        {
-                          sector: "Real Estate",
-                          pct: "-0.6%",
-                          positive: false,
-                        },
-                        { sector: "Utilities", pct: "-1.1%", positive: false },
-                      ].map(({ sector, pct, positive }) => (
-                        <div
-                          key={sector}
-                          className="flex items-center justify-between"
-                        >
-                          <span className="text-xs text-slate-600">
-                            {sector}
-                          </span>
-                          <span
-                            className={cn(
-                              "text-xs font-bold tabular-nums",
-                              positive ? "text-emerald-600" : "text-red-500",
-                            )}
-                          >
-                            {pct}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
-                    <h3 className="text-sm font-semibold text-slate-800 mb-1">
-                      {locale === "th" ? "เวลาเปิด–ปิดตลาด (ET)" : "Market Hours (ET)"}
-                    </h3>
-                    <p className="text-xs text-slate-500 mb-3">
-                      {locale === "th" ? "ตลาดหลักทรัพย์นิวยอร์ก" : "New York Stock Exchange"}
-                    </p>
-                    <div className="space-y-1.5 text-xs">
-                      <div className="flex justify-between">
-                        <span className="text-slate-500">
-                          {locale === "th" ? "ช่วงก่อนเปิดตลาด" : "Pre-Market"}
-                        </span>
-                        <span className="text-slate-700 font-medium">
-                          04:00 – 09:30
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-500">
-                          {locale === "th" ? "ช่วงปกติ" : "Regular"}
-                        </span>
-                        <span className="text-emerald-600 font-bold">
-                          09:30 – 16:00
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-500">
-                          {locale === "th" ? "ช่วงหลังปิดตลาด" : "After Hours"}
-                        </span>
-                        <span className="text-slate-700 font-medium">
-                          16:00 – 20:00
-                        </span>
-                      </div>
-                      <p className="text-[10px] text-slate-400 pt-1">
-                        {locale === "th" ? "UTC+7: เร็วกว่าตลาดนิวยอร์ก 11 ชั่วโมง (ฤดูหนาว)" : "UTC+7: +11 hours ahead of New York (winter)"}
-                      </p>
-                    </div>
-                  </div>
+                  <SectorLeadersCard />
+                  <MarketHoursCard />
                 </div>
               </div>
             </div>
