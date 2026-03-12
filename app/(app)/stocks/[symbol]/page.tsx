@@ -25,6 +25,7 @@ import { StockPriceChart } from "@/components/charts/StockPriceChart";
 import type { StockDetail } from "@/app/api/market/detail/[symbol]/route";
 import type { NewsItem, PriceHistory } from "@/src/types";
 import { useTranslations } from "@/src/i18n/useTranslations";
+import { NewsCard } from "@/components/ui/NewsCard";
 
 // ── Range selector ─────────────────────────────────────────────────────────
 const RANGE_OPTIONS = [
@@ -732,51 +733,7 @@ export default function StockDetailPage({
         ) : (
           <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {news.slice(0, 6).map((n) => (
-              <a
-                key={n.id}
-                href={n.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group flex flex-col rounded-xl border border-slate-200 bg-slate-50 hover:bg-white hover:border-indigo-200 hover:shadow-md transition-all overflow-hidden"
-              >
-                {n.imageUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={n.imageUrl}
-                    alt=""
-                    className="h-24 w-full object-cover"
-                    loading="lazy"
-                  />
-                )}
-                <div className="flex flex-1 flex-col gap-1.5 px-3.5 py-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="truncate text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
-                      {n.source}
-                    </span>
-                    <span className="text-[10px] text-slate-400 tabular-nums">
-                      {new Date(n.publishedAt).toLocaleString(
-                        locale === "th" ? "th-TH" : "en-US",
-                        { dateStyle: "medium", timeStyle: "short" },
-                      )}
-                    </span>
-                  </div>
-                  <p className="text-xs font-semibold text-slate-800 leading-snug line-clamp-3 group-hover:text-indigo-700 transition-colors">
-                    {n.title}
-                  </p>
-                  {n.description && (
-                    <p className="mt-0.5 text-[11px] text-slate-500 line-clamp-2">
-                      {n.description}
-                    </p>
-                  )}
-                  <div className="mt-auto pt-1 flex items-center justify-between text-[10px] text-slate-400">
-                    <span>{locale === "th" ? "อ่านต่อ" : "Read more"}</span>
-                    <ExternalLink
-                      size={10}
-                      className="text-slate-300 group-hover:text-indigo-400 transition-colors"
-                    />
-                  </div>
-                </div>
-              </a>
+              <NewsCard key={n.id} item={n} locale={locale} variant="stock" />
             ))}
           </div>
         )}

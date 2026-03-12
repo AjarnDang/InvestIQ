@@ -375,18 +375,26 @@ export default function HomePage() {
                           i === 0 && "sm:col-span-2",
                         )}
                       >
-                        {item.imageUrl && (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={item.imageUrl}
-                            alt=""
-                            className={cn(
-                              "w-full object-cover",
-                              i === 0 ? "h-32" : "h-24",
-                            )}
-                            loading="lazy"
-                          />
-                        )}
+                        <div
+                          className={cn(
+                            "w-full overflow-hidden",
+                            i === 0 ? "h-32" : "h-24",
+                          )}
+                        >
+                          {item.imageUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={item.imageUrl}
+                              alt=""
+                              className="w-full h-full object-cover"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-slate-100 flex items-center justify-center">
+                              <Newspaper size={18} className="text-slate-400" />
+                            </div>
+                          )}
+                        </div>
                         <div className="p-4 flex flex-col gap-2">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
