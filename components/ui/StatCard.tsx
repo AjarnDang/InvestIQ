@@ -28,8 +28,8 @@ export function StatCard({
   const isNegative = change !== undefined && change < 0;
 
   return (
-    <Card className={cn("overflow-hidden", className)}>
-      <CardContent className="p-4 md:p-5">
+    <div className={cn("overflow-hidden", className)}>
+      <div className="shadow-none border-0">
         <div className="flex items-start justify-between">
           <div className="flex-1 min-w-0">
             <p className="text-[10px] md:text-xs font-medium text-slate-500 uppercase tracking-wider truncate">
@@ -82,7 +82,7 @@ export function StatCard({
             </div>
           )}
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
