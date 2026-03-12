@@ -246,6 +246,13 @@ export interface StockDetail {
   price:          number;
   change:         number;
   changePercent:  number;
+  marketState?:   string;
+  preMarketPrice?:        number;
+  preMarketChange?:       number;
+  preMarketChangePercent?: number;
+  postMarketPrice?:        number;
+  postMarketChange?:       number;
+  postMarketChangePercent?: number;
   open?:          number;
   prevClose?:     number;
   dayHigh?:       number;

@@ -364,51 +364,65 @@ export default function HomePage() {
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {previewNews.map((item, i,) => (
+                    {previewNews.map((item, i) => (
                       <a
                         key={item.id}
                         href={item.url}
                         target="_blank"
                         rel="noopener noreferrer"
                         className={cn(
-                          "group bg-white rounded-xl border border-slate-200 p-4 hover:shadow-md hover:border-indigo-200 transition-all flex flex-col gap-2",
+                          "group bg-white rounded-xl border border-slate-200 hover:shadow-md hover:border-indigo-200 transition-all flex flex-col",
                           i === 0 && "sm:col-span-2",
                         )}
                       >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span
-                              className={cn(
-                                "text-[10px] font-semibold px-2 py-0.5 rounded",
-                                getSourceBadgeClass(item.source),
-                              )}
-                            >
-                              {item.source}
-                            </span>
-                            <span className="text-[10px] text-slate-400 flex items-center gap-0.5">
-                              <Clock size={9} /> {timeAgo(item.publishedAt)}
-                            </span>
-                          </div>
-                          <ExternalLink
-                            size={11}
-                            className="text-slate-300 group-hover:text-indigo-400 transition-colors"
+                        {item.imageUrl && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={item.imageUrl}
+                            alt=""
+                            className={cn(
+                              "w-full object-cover",
+                              i === 0 ? "h-32" : "h-24",
+                            )}
+                            loading="lazy"
                           />
-                        </div>
-                        <p
-                          className={cn(
-                            "font-medium text-slate-800 group-hover:text-indigo-700 transition-colors leading-snug",
-                            i === 0
-                              ? "text-sm line-clamp-2"
-                              : "text-xs line-clamp-3",
-                          )}
-                        >
-                          {item.title}
-                        </p>
-                        {item.description && i === 0 && (
-                          <p className="text-xs text-slate-500 line-clamp-2">
-                            {item.description}
-                          </p>
                         )}
+                        <div className="p-4 flex flex-col gap-2">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={cn(
+                                  "text-[10px] font-semibold px-2 py-0.5 rounded",
+                                  getSourceBadgeClass(item.source),
+                                )}
+                              >
+                                {item.source}
+                              </span>
+                              <span className="text-[10px] text-slate-400 flex items-center gap-0.5">
+                                <Clock size={9} /> {timeAgo(item.publishedAt)}
+                              </span>
+                            </div>
+                            <ExternalLink
+                              size={11}
+                              className="text-slate-300 group-hover:text-indigo-400 transition-colors"
+                            />
+                          </div>
+                          <p
+                            className={cn(
+                              "font-medium text-slate-800 group-hover:text-indigo-700 transition-colors leading-snug",
+                              i === 0
+                                ? "text-sm line-clamp-2"
+                                : "text-xs line-clamp-3",
+                            )}
+                          >
+                            {item.title}
+                          </p>
+                          {item.description && i === 0 && (
+                            <p className="text-xs text-slate-500 line-clamp-2">
+                              {item.description}
+                            </p>
+                          )}
+                        </div>
                       </a>
                     ))}
                     {!loadingNews && news.length === 0 && (

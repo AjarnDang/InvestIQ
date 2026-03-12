@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SYMBOL_TO_META } from "@/src/data/sectorMap";
 import { resolveAliasToYahoo } from "@/src/data/indexAliases";
-import type { StockDetail } from "@/src/types";
+import type { NewsItem, StockDetail } from "@/src/types";
 
 export const revalidate = 60;
 
@@ -127,6 +127,136 @@ async function fetchFromQuoteSummary(
   }
 }
 
+/**
+ * OPTIONAL enrichment — v7/finance/quote (single symbol).
+ * Used for: pre/post-market fields + sometimes more reliable marketCap.
+ * May fail with 401/403 — silently returns null in that case.
+ */
+async function fetchFromQuoteV7(
+  yahooSymbol: string,
+): Promise<Partial<StockDetail> | null> {
+  try {
+    const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(
+      yahooSymbol,
+    )}&lang=en&region=US`;
+    const res = await fetch(url, {
+      headers: YAHOO_HEADERS,
+      next: { revalidate: 60 },
+    });
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    const r = data?.quoteResponse?.result?.[0];
+    if (!r) return null;
+
+    return {
+      marketState: r.marketState,
+      marketCap: typeof r.marketCap === "number" ? r.marketCap : undefined,
+      preMarketPrice:
+        typeof r.preMarketPrice === "number" ? r.preMarketPrice : undefined,
+      preMarketChange:
+        typeof r.preMarketChange === "number" ? r.preMarketChange : undefined,
+      preMarketChangePercent:
+        typeof r.preMarketChangePercent === "number"
+          ? r.preMarketChangePercent
+          : undefined,
+      postMarketPrice:
+        typeof r.postMarketPrice === "number" ? r.postMarketPrice : undefined,
+      postMarketChange:
+        typeof r.postMarketChange === "number" ? r.postMarketChange : undefined,
+      postMarketChangePercent:
+        typeof r.postMarketChangePercent === "number"
+          ? r.postMarketChangePercent
+          : undefined,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * OPTIONAL enrichment — Yahoo search news (no API key).
+ * Endpoint: v1/finance/search
+ */
+async function fetchNewsFromYahooSearch(
+  query: string,
+  limit = 8,
+): Promise<NewsItem[]> {
+  const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(
+    query,
+  )}&quotesCount=0&newsCount=${encodeURIComponent(String(limit))}&listsCount=0&enableFuzzyQuery=false&lang=en&region=US`;
+
+  try {
+    const res = await fetch(url, {
+      headers: YAHOO_HEADERS,
+      next: { revalidate: 120 },
+    });
+    if (!res.ok) return [];
+
+    const data = await res.json();
+    type YahooSearchNewsItem = {
+      uuid?: string;
+      id?: string;
+      title?: string;
+      link?: string;
+      url?: string;
+      canonicalUrl?: { url?: string };
+      clickThroughUrl?: { url?: string };
+      providerPublishTime?: number;
+      published_at?: string;
+      publisher?: string;
+      provider?: string;
+      summary?: string;
+      description?: string;
+      thumbnail?: { resolutions?: Array<{ url?: string }>; url?: string };
+      image?: { url?: string };
+    };
+    const news: YahooSearchNewsItem[] = data?.news ?? [];
+
+    return news
+      .map((n) => {
+        const url =
+          n?.link ??
+          n?.canonicalUrl?.url ??
+          n?.clickThroughUrl?.url ??
+          n?.url;
+        if (!url) return null;
+
+        const publishedAt =
+          typeof n?.providerPublishTime === "number"
+            ? new Date(n.providerPublishTime * 1000).toISOString()
+            : typeof n?.published_at === "string"
+              ? n.published_at
+              : new Date().toISOString();
+
+        const title = String(n?.title ?? "").trim();
+        if (!title) return null;
+
+        const imageUrl =
+          n?.thumbnail?.resolutions?.[0]?.url ??
+          n?.thumbnail?.url ??
+          n?.image?.url;
+
+        const id =
+          String(n?.uuid ?? n?.id ?? url ?? `${title}:${publishedAt}`) ?? title;
+
+        return {
+          id,
+          title,
+          description: String(n?.summary ?? n?.description ?? "").trim(),
+          url: String(url),
+          source: String(n?.publisher ?? n?.provider ?? "Yahoo Finance"),
+          publishedAt,
+          imageUrl: typeof imageUrl === "string" ? imageUrl : undefined,
+        } satisfies NewsItem;
+      })
+      .filter(Boolean)
+      .slice(0, limit) as NewsItem[];
+  } catch {
+    return [];
+  }
+}
+
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ symbol: string }> },
@@ -149,7 +279,14 @@ export async function GET(
     // ── Step 2: optional profile enrichment (v10, may fail silently) ───
     const profileData = await fetchFromQuoteSummary(yahooSymbol);
 
-    // ── Step 3: supplement with local metadata for SET stocks ──────────
+    // ── Step 3: extended hours + market cap (v7, may fail silently) ────
+    const v7Data = await fetchFromQuoteV7(yahooSymbol);
+
+    // ── Step 4: related news (v1 search, may fail silently) ────────────
+    // Prefer clean app symbol for query (AAPL) but also works with .BK / indices.
+    const news = await fetchNewsFromYahooSearch(sym, 10);
+
+    // ── Step 5: supplement with local metadata for SET stocks ──────────
     //   Clean symbol (without .BK), sector from sectorMap, etc.
     const localOverride: Partial<StockDetail> = {
       symbol: sym,                               // always use clean app symbol
@@ -164,13 +301,14 @@ export async function GET(
       price:  0,
       change: 0,
       changePercent: 0,
-      // merge in order: chart (reliable) → profile (optional) → local (override)
+      // merge in order: chart (reliable) → profile (optional) → v7 (optional) → local (override)
       ...chartData,
       ...profileData,
+      ...v7Data,
       ...localOverride,
     };
 
-    return NextResponse.json({ detail });
+    return NextResponse.json({ detail, news });
   } catch (err) {
     console.error(`[api/market/detail] error for ${sym} (${yahooSymbol}):`, err);
     return NextResponse.json({ error: "Could not fetch data" }, { status: 500 });
