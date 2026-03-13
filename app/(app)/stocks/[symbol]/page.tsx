@@ -23,9 +23,13 @@ import { cn } from "@/src/utils/helpers";
 import { formatInteger, formatPercent } from "@/src/utils/formatters";
 import { StockPriceChart } from "@/components/charts/StockPriceChart";
 import type { StockDetail } from "@/app/api/market/detail/[symbol]/route";
-import type { NewsItem, PriceHistory } from "@/src/types";
+import type { NewsItem, PriceHistory, Holding } from "@/src/types";
 import { useTranslations } from "@/src/i18n/useTranslations";
 import { NewsCard } from "@/components/ui/NewsCard";
+import {
+  calculatePositionCostMetrics,
+  type PositionCostMetrics,
+} from "@/src/functions/portfolioFunctions";
 
 // ── Range selector ─────────────────────────────────────────────────────────
 const RANGE_OPTIONS = [
@@ -131,6 +135,15 @@ export default function StockDetailPage({
   const sym = symbol?.toUpperCase() ?? "";
   const isWatched = watchlistItems.some((w) => w.symbol === sym);
   const isIntraday = activeRange === "1D" || activeRange === "5D";
+  const holdings = useAppSelector((s) => s.portfolio.holdings);
+  const holdingForSymbol: Holding | undefined = holdings.find(
+    (h) => h.symbol === sym,
+  );
+  const positionMetrics: PositionCostMetrics | null =
+    calculatePositionCostMetrics(
+      holdingForSymbol ?? null,
+      detail?.price ?? null,
+    );
 
   // ── Fetch price history for the given range ────────────────────────────
   async function fetchHistory(rangeLabel: RangeLabel) {
@@ -300,146 +313,215 @@ export default function StockDetailPage({
       {/* ── Hero header ─────────────────────────────────────────────────── */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="px-5 py-5 md:px-6">
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <section>
             {/* Left: name + badges */}
             <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap mb-1">
-                <span className="text-2xl font-black text-slate-900">
-                  {sym}
-                </span>
-                {detail.exchange && (
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">
-                    {detail.exchange}
-                  </span>
-                )}
-                {detail.quoteType && (
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
-                    {QUOTE_TYPE_LABEL[detail.quoteType] ?? detail.quoteType}
-                  </span>
-                )}
-              </div>
-              <p className="text-sm text-slate-500 truncate max-w-xs">
-                {detail.name}
-              </p>
-              {(detail.sector || detail.industry) && (
-                <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                  {detail.sector && (
-                    <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-violet-50 text-violet-700">
-                      {detail.sector}
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm text-slate-500 truncate max-w-xs">
+                    {detail.name}
+                  </p>
+                  <div className="flex items-center gap-2 flex-wrap mb-1">
+                    <span className="text-2xl font-black text-slate-900">
+                      {sym}
                     </span>
-                  )}
-                  {detail.industry && (
-                    <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
-                      {detail.industry}
-                    </span>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Right: price + watchlist */}
-            <div className="flex flex-row sm:flex-col items-end gap-3 sm:gap-1 shrink-0">
-              <div className="text-right">
-                <p className="text-2xl font-black tabular-nums text-slate-900">
-                  {detail.currency === "THB" ? "฿" : "$"}
-                  {fmt(detail.price)}
-                </p>
-                <div
-                  className={cn(
-                    "flex items-center justify-end gap-1 text-sm font-bold tabular-nums",
-                    positive ? "text-emerald-600" : "text-red-500",
-                  )}
-                >
-                  {positive ? (
-                    <TrendingUp size={14} />
-                  ) : (
-                    <TrendingDown size={14} />
-                  )}
-                  {positive ? "+" : ""}
-                  {fmt(detail.change)} ({positive ? "+" : ""}
-                  {fmt(detail.changePercent)}%)
+                  </div>
+                  <div className="mb-1">
+                    <p className="md:text-3xl text-2xl font-black tabular-nums text-slate-900">
+                      {detail.currency === "THB" ? "฿" : "$"}
+                      {fmt(detail.price)}
+                    </p>
+                    <div
+                      className={cn(
+                        "flex items-center justify-start gap-1 text-sm font-bold tabular-nums",
+                        positive ? "text-emerald-600" : "text-red-500",
+                      )}
+                    >
+                      {positive ? (
+                        <TrendingUp size={14} />
+                      ) : (
+                        <TrendingDown size={14} />
+                      )}
+                      {positive ? "+" : ""}
+                      {fmt(detail.change)} ({positive ? "+" : ""}
+                      {fmt(detail.changePercent)}%)
+                    </div>
+                  </div>
                 </div>
 
-                {(hasPre || hasPost) && (
-                  <div className="mt-2 flex flex-col gap-1 text-[11px] text-slate-500">
-                    {hasPre && (
-                      <div className="flex items-center justify-end gap-2">
-                        <span className="rounded-full bg-slate-100 px-2 py-0.5 font-semibold text-slate-600">
-                          {locale === "th" ? "ก่อนเปิดตลาด" : "Pre"}
-                        </span>
-                        <span className="tabular-nums text-slate-700">
-                          {detail.currency === "THB" ? "฿" : "$"}
-                          {fmt(detail.preMarketPrice)}
-                        </span>
-                        {typeof detail.preMarketChangePercent === "number" && (
-                          <span
-                            className={cn(
-                              "tabular-nums font-semibold",
-                              detail.preMarketChangePercent >= 0
-                                ? "text-emerald-600"
-                                : "text-red-500",
-                            )}
-                          >
-                            {detail.preMarketChangePercent >= 0 ? "+" : ""}
-                            {fmt(detail.preMarketChangePercent)}%
+                {/* Right: price + watchlist */}
+                <div className="flex flex-row sm:flex-col items-end gap-1 sm:gap-1 shrink-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {detail.exchange && (
+                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">
+                        {detail.exchange}
+                      </span>
+                    )}
+                    {detail.quoteType && (
+                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                        {QUOTE_TYPE_LABEL[detail.quoteType] ?? detail.quoteType}
+                      </span>
+                    )}
+                    {(detail.sector || detail.industry) && (
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {detail.sector && (
+                          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-violet-50 text-violet-700">
+                            {detail.sector}
                           </span>
                         )}
-                      </div>
-                    )}
-                    {hasPost && (
-                      <div className="flex items-center justify-end gap-2">
-                        <span className="rounded-full bg-slate-100 px-2 py-0.5 font-semibold text-slate-600">
-                          {locale === "th" ? "หลังปิดตลาด" : "Post"}
-                        </span>
-                        <span className="tabular-nums text-slate-700">
-                          {detail.currency === "THB" ? "฿" : "$"}
-                          {fmt(detail.postMarketPrice)}
-                        </span>
-                        {typeof detail.postMarketChangePercent === "number" && (
-                          <span
-                            className={cn(
-                              "tabular-nums font-semibold",
-                              detail.postMarketChangePercent >= 0
-                                ? "text-emerald-600"
-                                : "text-red-500",
-                            )}
-                          >
-                            {detail.postMarketChangePercent >= 0 ? "+" : ""}
-                            {fmt(detail.postMarketChangePercent)}%
+                        {detail.industry && (
+                          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
+                            {detail.industry}
                           </span>
                         )}
                       </div>
                     )}
                   </div>
+                  <div className="text-right">
+                    {(hasPre || hasPost) && (
+                      <div className="flex flex-col gap-1 text-[11px] text-slate-500">
+                        {hasPre && (
+                          <div className="flex items-center justify-end gap-2">
+                            <span className="rounded-full bg-slate-100 px-2 py-0.5 font-semibold text-slate-600">
+                              {locale === "th" ? "ก่อนเปิดตลาด" : "Pre"}
+                            </span>
+                            <span className="tabular-nums text-slate-700">
+                              {detail.currency === "THB" ? "฿" : "$"}
+                              {fmt(detail.preMarketPrice)}
+                            </span>
+                            {typeof detail.preMarketChangePercent ===
+                              "number" && (
+                              <span
+                                className={cn(
+                                  "tabular-nums font-semibold",
+                                  detail.preMarketChangePercent >= 0
+                                    ? "text-emerald-600"
+                                    : "text-red-500",
+                                )}
+                              >
+                                {detail.preMarketChangePercent >= 0 ? "+" : ""}
+                                {fmt(detail.preMarketChangePercent)}%
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        {hasPost && (
+                          <div className="flex items-center justify-end gap-2">
+                            <span className="rounded-full bg-slate-100 px-2 py-0.5 font-semibold text-slate-600">
+                              {locale === "th" ? "หลังปิดตลาด" : "Post"}
+                            </span>
+                            <span className="tabular-nums text-slate-700">
+                              {detail.currency === "THB" ? "฿" : "$"}
+                              {fmt(detail.postMarketPrice)}
+                            </span>
+                            {typeof detail.postMarketChangePercent ===
+                              "number" && (
+                              <span
+                                className={cn(
+                                  "tabular-nums font-semibold",
+                                  detail.postMarketChangePercent >= 0
+                                    ? "text-emerald-600"
+                                    : "text-red-500",
+                                )}
+                              >
+                                {detail.postMarketChangePercent >= 0 ? "+" : ""}
+                                {fmt(detail.postMarketChangePercent)}%
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={toggleWatch}
+                      className={cn(
+                        "flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition-colors border",
+                        isWatched
+                          ? "bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100"
+                          : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200",
+                      )}
+                    >
+                      {isWatched ? <StarOff size={13} /> : <Star size={13} />}
+                      {isWatched
+                        ? locale === "th"
+                          ? "ยกเลิกติดตาม"
+                          : "Unwatch"
+                        : t("watchlist.title")}
+                    </button>
+                    <button
+                      onClick={reload}
+                      className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100 transition-colors"
+                      aria-label="Refresh data"
+                    >
+                      <RefreshCw size={13} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Chart header: title + range buttons */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-5 py-3.5 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <Activity size={14} className="text-slate-500" />
+                  <h2 className="text-sm font-semibold text-slate-800">
+                    {t("stocks.chart")}
+                  </h2>
+                  {histLoading && (
+                    <RefreshCw
+                      size={11}
+                      className="animate-spin text-slate-400"
+                    />
+                  )}
+                </div>
+
+                {/* Range filter buttons */}
+                <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
+                  {RANGE_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.label}
+                      onClick={() => setActiveRange(opt.label)}
+                      className={cn(
+                        "shrink-0 px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors",
+                        activeRange === opt.label
+                          ? "bg-indigo-600 text-white"
+                          : "text-slate-500 hover:bg-slate-100 hover:text-slate-700",
+                      )}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="p-4">
+                {histLoading && history.length === 0 ? (
+                  <div
+                    className="animate-pulse bg-slate-100 rounded-xl"
+                    style={{ height: 220 }}
+                  />
+                ) : history.length > 0 ? (
+                  <StockPriceChart
+                    data={history}
+                    height={220}
+                    currency={detail.currency ?? "THB"}
+                    intraday={isIntraday}
+                  />
+                ) : (
+                  <div
+                    className="flex items-center justify-center text-sm text-slate-400"
+                    style={{ height: 220 }}
+                  >
+                    {locale === "th"
+                      ? "ไม่มีข้อมูลกราฟ"
+                      : "No chart data available"}
+                  </div>
                 )}
               </div>
-              <div className="flex items-center gap-2 mt-2">
-                <button
-                  onClick={toggleWatch}
-                  className={cn(
-                    "flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition-colors border",
-                    isWatched
-                      ? "bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100"
-                      : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200",
-                  )}
-                >
-                  {isWatched ? <StarOff size={13} /> : <Star size={13} />}
-                  {isWatched
-                    ? locale === "th"
-                      ? "ยกเลิกติดตาม"
-                      : "Unwatch"
-                    : t("watchlist.title")}
-                </button>
-                <button
-                  onClick={reload}
-                  className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100 transition-colors"
-                  aria-label="Refresh data"
-                >
-                  <RefreshCw size={13} />
-                </button>
-              </div>
             </div>
-          </div>
+          </section>
         </div>
 
         {/* Day range bar */}
@@ -469,72 +551,62 @@ export default function StockDetailPage({
           )}
       </div>
 
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden p-4">
+        {positionMetrics && (
+          <div className="hidden sm:flex items-center gap-4 text-[11px] text-slate-500">
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 font-semibold text-slate-600">
+              {locale === "th" ? "สถานะในพอร์ต" : "Position in portfolio"}
+            </span>
+            <span className="tabular-nums">
+              {locale === "th" ? "จำนวน" : "Shares"}:{" "}
+              <span className="font-semibold text-slate-700">
+                {positionMetrics.quantity.toLocaleString()}{" "}
+              </span>
+              {positionMetrics.quantity > 1 && (
+                <span className="text-slate-400">
+                  {locale === "th" ? "หุ้น" : ""}
+                </span>
+              )}
+            </span>
+            <span className="tabular-nums">
+              {locale === "th" ? "ต้นทุนเฉลี่ย" : "Avg cost"}:{" "}
+              <span className="font-semibold text-slate-700">
+                {detail.currency === "THB" ? "฿" : "$"}
+                {fmt(positionMetrics.avgCost)}
+              </span>
+            </span>
+            <span className="tabular-nums">
+              {locale === "th" ? "มูลค่าต้นทุน" : "Cost basis"}:{" "}
+              <span className="font-semibold text-slate-700">
+                {detail.currency === "THB" ? "฿" : "$"}
+                {fmt(positionMetrics.costBasis)}
+              </span>
+            </span>
+            <span
+              className={cn(
+                "tabular-nums font-semibold",
+                positionMetrics.unrealizedPnL >= 0
+                  ? "text-emerald-600"
+                  : "text-red-500",
+              )}
+            >
+              {locale === "th"
+                ? "กำไร/ขาดทุนที่ยังไม่รับรู้"
+                : "Unrealized P&L"}
+              : {positionMetrics.unrealizedPnL >= 0 ? "+" : ""}
+              {detail.currency === "THB" ? "฿" : "$"}
+              {fmt(Math.abs(positionMetrics.unrealizedPnL))} (
+              {positionMetrics.unrealizedPnLPercent >= 0 ? "+" : ""}
+              {fmt(Math.abs(positionMetrics.unrealizedPnLPercent))}%)
+            </span>
+          </div>
+        )}
+      </div>
+
       {/* ── Two-column layout ──────────────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
         {/* ── Left: chart + key stats ──────────────────────────────────── */}
         <div className="xl:col-span-2 space-y-5">
-          {/* Price chart */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            {/* Chart header: title + range buttons */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-5 py-3.5 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <Activity size={14} className="text-slate-500" />
-                <h2 className="text-sm font-semibold text-slate-800">
-                  {t("stocks.chart")}
-                </h2>
-                {histLoading && (
-                  <RefreshCw
-                    size={11}
-                    className="animate-spin text-slate-400"
-                  />
-                )}
-              </div>
-
-              {/* Range filter buttons */}
-              <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
-                {RANGE_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.label}
-                    onClick={() => setActiveRange(opt.label)}
-                    className={cn(
-                      "shrink-0 px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors",
-                      activeRange === opt.label
-                        ? "bg-indigo-600 text-white"
-                        : "text-slate-500 hover:bg-slate-100 hover:text-slate-700",
-                    )}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="p-4">
-              {histLoading && history.length === 0 ? (
-                <div
-                  className="animate-pulse bg-slate-100 rounded-xl"
-                  style={{ height: 220 }}
-                />
-              ) : history.length > 0 ? (
-                <StockPriceChart
-                  data={history}
-                  height={220}
-                  currency={detail.currency ?? "THB"}
-                  intraday={isIntraday}
-                />
-              ) : (
-                <div
-                  className="flex items-center justify-center text-sm text-slate-400"
-                  style={{ height: 220 }}
-                >
-                  {locale === "th"
-                    ? "ไม่มีข้อมูลกราฟ"
-                    : "No chart data available"}
-                </div>
-              )}
-            </div>
-          </div>
-
           {/* Key stats grid */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
             <div className="flex items-center gap-2 px-5 py-3.5 border-b border-slate-100">
@@ -720,7 +792,9 @@ export default function StockDetailPage({
           </h2>
           {news.length > 0 && (
             <span className="text-[10px] text-slate-400">
-              {locale === "th" ? "อัปเดตจาก Yahoo Finance" : "Powered by Yahoo Finance"}
+              {locale === "th"
+                ? "อัปเดตจาก Yahoo Finance"
+                : "Powered by Yahoo Finance"}
             </span>
           )}
         </div>

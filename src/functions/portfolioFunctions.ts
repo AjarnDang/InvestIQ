@@ -102,3 +102,49 @@ export function buildHolding(
     weight: totalWeight,
   };
 }
+
+// ─── Single-position cost metrics ─────────────────────────────────────────────
+
+export interface PositionCostMetrics {
+  hasPosition: boolean;
+  quantity: number;
+  avgCost: number;
+  costBasis: number;
+  currentPrice: number;
+  currentValue: number;
+  unrealizedPnL: number;
+  unrealizedPnLPercent: number;
+  priceDiff: number;
+  priceDiffPercent: number;
+}
+
+export function calculatePositionCostMetrics(
+  holding: Holding | null | undefined,
+  currentPrice: number | null | undefined,
+): PositionCostMetrics | null {
+  if (!holding || holding.quantity <= 0 || currentPrice == null || !Number.isFinite(currentPrice)) {
+    return null;
+  }
+
+  const quantity = holding.quantity;
+  const avgCost = holding.avgCost;
+  const costBasis = quantity * avgCost;
+  const currentValue = quantity * currentPrice;
+  const unrealizedPnL = currentValue - costBasis;
+  const unrealizedPnLPercent = costBasis > 0 ? (unrealizedPnL / costBasis) * 100 : 0;
+  const priceDiff = currentPrice - avgCost;
+  const priceDiffPercent = avgCost > 0 ? (priceDiff / avgCost) * 100 : 0;
+
+  return {
+    hasPosition: true,
+    quantity,
+    avgCost,
+    costBasis,
+    currentPrice,
+    currentValue,
+    unrealizedPnL,
+    unrealizedPnLPercent,
+    priceDiff,
+    priceDiffPercent,
+  };
+}

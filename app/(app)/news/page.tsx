@@ -83,12 +83,6 @@ export default function NewsPage() {
     return [...local, ...global];
   }, [indices, globalIndices]);
 
-  const filteredRows = allIndexRows;
-
-  function goToIndex(name: string) {
-    router.push(`/stocks/${encodeURIComponent(name)}`);
-  }
-
   const hotStocks: TrendingStock[] = trendingStocks.slice(0, 6);
 
   return (
@@ -167,7 +161,7 @@ export default function NewsPage() {
 
           {/* News list (compact rows) */}
           {!loadingNews && filtered.length > 0 && (
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm divide-y divide-slate-50">
+            <div className="rounded-2xl border border-slate-200 divide-y divide-slate-50">
               {pagedNews.map((item) => {
                 const accentBorder = getSourceAccentClass(item.source);
                 return (

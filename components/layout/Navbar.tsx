@@ -464,6 +464,8 @@ export function Navbar() {
                           <div className="grid grid-cols-2 gap-1.5">
                             {PROFILE_NAV_ITEMS.map((item) => {
                               const active = pathname === item.href;
+                              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                              const label = t(item.translationKey as any) || item.label;
                               return (
                                 <Link
                                   key={item.href}
@@ -481,7 +483,7 @@ export function Navbar() {
                                     className={active ? "text-indigo-600" : "text-slate-400"}
                                   />
                                   <span className="text-[11px] font-semibold leading-tight">
-                                    {item.label}
+                                    {label}
                                   </span>
                                 </Link>
                               );

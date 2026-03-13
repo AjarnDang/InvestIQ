@@ -35,7 +35,7 @@ export function NewsCard({ item, locale, variant = "stock", className }: NewsCar
         target="_blank"
         rel="noopener noreferrer"
         className={cn(
-          "group flex items-start gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 hover:shadow-sm hover:border-indigo-200 transition-all",
+          "group flex items-start gap-3 rounded-xl transition-all",
           className,
         )}
       >
@@ -45,11 +45,11 @@ export function NewsCard({ item, locale, variant = "stock", className }: NewsCar
             <img
               src={item.imageUrl}
               alt=""
-              className="h-12 w-16 rounded-md object-cover bg-slate-100"
+              className="md:h-24 md:w-32 h-16 w-24 rounded-md object-cover bg-slate-100"
               loading="lazy"
             />
           ) : (
-            <div className="h-12 w-16 rounded-md bg-slate-100 flex items-center justify-center">
+            <div className="md:h-24 md:w-32 h-16 w-24 rounded-md bg-slate-100 flex items-center justify-center">
               <Newspaper size={16} className="text-slate-400" />
             </div>
           )}

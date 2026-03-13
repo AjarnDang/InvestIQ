@@ -756,7 +756,7 @@ export default function HomePage() {
               <div className="space-y-5 sticky top-0">
 
                 {/* ── Fear & Greed Index ──────────────────────────────── */}
-                <FearGreedCard trendingStocks={trendingStocks} />
+                <FearGreedCard />
 
                 <GlobalMarketsCard indices={globalIndices} loading={loadingGlobal} />
 
