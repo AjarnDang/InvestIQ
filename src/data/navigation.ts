@@ -10,17 +10,8 @@ import {
   Briefcase,
   Info,
   PieChart,
-  type LucideIcon,
 } from "lucide-react";
-
-export interface NavItem {
-  href: string;
-  /** Fallback label (English) used when no translation is available */
-  label: string;
-  icon: LucideIcon;
-  /** Dot-path into the Messages object, e.g. "nav.home" or "auth.portfolio" */
-  translationKey: string;
-}
+import type { NavItem } from "@/src/types/navigation";
 
 // ── Main navigation — public, same for all users ──────────────────────────
 export const MAIN_NAV_ITEMS: NavItem[] = [

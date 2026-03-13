@@ -23,13 +23,14 @@ import { cn } from "@/src/utils/helpers";
 import { formatInteger, formatPercent } from "@/src/utils/formatters";
 import { StockPriceChart } from "@/components/charts/StockPriceChart";
 import type { StockDetail } from "@/app/api/market/detail/[symbol]/route";
-import type { NewsItem, PriceHistory, Holding } from "@/src/types";
+import type { NewsItem, PriceHistory, Holding, AssetKey } from "@/src/types";
 import { useTranslations } from "@/src/i18n/useTranslations";
 import { NewsCard } from "@/components/ui/NewsCard";
 import {
   calculatePositionCostMetrics,
   type PositionCostMetrics,
 } from "@/src/functions/portfolioFunctions";
+import { SYMBOL_TO_META } from "@/src/data/sectorMap";
 
 // ── Range selector ─────────────────────────────────────────────────────────
 const RANGE_OPTIONS = [
@@ -66,6 +67,50 @@ function fmtVol(n: number | null | undefined) {
   if (n >= 1e6) return `${(n / 1e6).toFixed(2)}M`;
   if (n >= 1e3) return `${(n / 1e3).toFixed(1)}K`;
   return String(n);
+}
+
+function getAssetKeyForSymbol(symbol: string): AssetKey {
+  const meta = SYMBOL_TO_META[symbol];
+  if (meta?.type === "ETF") return "etf";
+  if (meta?.type === "CRYPTO") return "crypto";
+  if (meta?.sector === "Commodity") return "gold";
+  const exch = (meta?.exchange ?? "").toUpperCase();
+  if (exch === "SET") return "th";
+  return "us";
+}
+
+function getAssetBadgeLabel(key: AssetKey, locale: "th" | "en") {
+  if (locale === "th") {
+    if (key === "us") return "อยู่ในพอร์ตหุ้นสหรัฐฯ";
+    if (key === "th") return "อยู่ในพอร์ตหุ้นไทย";
+    if (key === "etf") return "อยู่ในพอร์ต ETF";
+    if (key === "crypto") return "อยู่ในพอร์ตคริปโต";
+    if (key === "gold") return "อยู่ในพอร์ตทองคำ";
+  } else {
+    if (key === "us") return "In US stocks portfolio";
+    if (key === "th") return "In Thai stocks portfolio";
+    if (key === "etf") return "In ETF portfolio";
+    if (key === "crypto") return "In Crypto portfolio";
+    if (key === "gold") return "In Gold portfolio";
+  }
+  return "";
+}
+
+function getAssetBadgeClass(key: AssetKey) {
+  switch (key) {
+    case "us":
+      return "bg-indigo-50 text-indigo-700 border border-indigo-100";
+    case "th":
+      return "bg-sky-50 text-sky-700 border border-sky-100";
+    case "etf":
+      return "bg-emerald-50 text-emerald-700 border border-emerald-100";
+    case "crypto":
+      return "bg-orange-50 text-orange-700 border border-orange-100";
+    case "gold":
+      return "bg-amber-50 text-amber-700 border border-amber-100";
+    default:
+      return "bg-slate-50 text-slate-600 border border-slate-200";
+  }
 }
 
 // ── Stat tile ──────────────────────────────────────────────────────────────
@@ -551,37 +596,62 @@ export default function StockDetailPage({
           )}
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden p-4">
-        {positionMetrics && (
-          <div className="hidden sm:flex items-center gap-4 text-[11px] text-slate-500">
-            <span className="rounded-full bg-slate-100 px-2 py-0.5 font-semibold text-slate-600">
-              {locale === "th" ? "สถานะในพอร์ต" : "Position in portfolio"}
-            </span>
-            <span className="tabular-nums">
-              {locale === "th" ? "จำนวน" : "Shares"}:{" "}
-              <span className="font-semibold text-slate-700">
-                {positionMetrics.quantity.toLocaleString()}{" "}
+      {positionMetrics && (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden p-4">
+          <div className="hidden sm:block text-sm text-slate-500 space-y-2">
+            {holdingForSymbol && (
+              <span
+                className={cn(
+                  "px-2 py-0.5 rounded-full font-semibold",
+                  getAssetBadgeClass(getAssetKeyForSymbol(sym)),
+                )}
+              >
+                {getAssetBadgeLabel(getAssetKeyForSymbol(sym), locale)}
               </span>
-              {positionMetrics.quantity > 1 && (
-                <span className="text-slate-400">
-                  {locale === "th" ? "หุ้น" : ""}
+            )}
+            <div className="grid grid-cols-2 items-center gap-4 mt-2">
+              <div className="col-span-1 tabular-nums">
+                {locale === "th" ? "จำนวน" : "Shares"}:{" "}
+                <span className="font-semibold text-slate-700">
+                  {positionMetrics.quantity.toLocaleString()}{" "}
                 </span>
-              )}
-            </span>
-            <span className="tabular-nums">
-              {locale === "th" ? "ต้นทุนเฉลี่ย" : "Avg cost"}:{" "}
-              <span className="font-semibold text-slate-700">
-                {detail.currency === "THB" ? "฿" : "$"}
-                {fmt(positionMetrics.avgCost)}
+                {positionMetrics.quantity > 1 && (
+                  <span className="text-slate-400">
+                    {locale === "th" ? "หุ้น" : ""}
+                  </span>
+                )}
+              </div>
+              <div className="col-span-1 tabular-nums">
+                {locale === "th" ? "ต้นทุนเฉลี่ย" : "Avg cost"}:{" "}
+                <span className="font-semibold text-slate-700">
+                  {detail.currency === "THB" ? "฿" : "$"}
+                  {fmt(positionMetrics.avgCost)}
+                </span>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 items-center gap-4">
+              <span className="col-span-1 tabular-nums">
+                {locale === "th" ? "มูลค่าต้นทุน" : "Cost basis"}:{" "}
+                <span className="font-semibold text-slate-700">
+                  {detail.currency === "THB" ? "฿" : "$"}
+                  {fmt(positionMetrics.costBasis)}
+                </span>
               </span>
-            </span>
-            <span className="tabular-nums">
-              {locale === "th" ? "มูลค่าต้นทุน" : "Cost basis"}:{" "}
-              <span className="font-semibold text-slate-700">
-                {detail.currency === "THB" ? "฿" : "$"}
-                {fmt(positionMetrics.costBasis)}
+              <span className="col-span-1 tabular-nums">
+                {locale === "th" ? "มูลค่าล่าสุด" : "Latest vs cost"}:{" "}
+                <span
+                  className={cn(
+                    "font-semibold",
+                    positionMetrics.priceDiffPercent >= 0
+                      ? "text-emerald-600"
+                      : "text-red-500",
+                  )}
+                >
+                  {positionMetrics.priceDiffPercent >= 0 ? "+" : ""}
+                  {fmt(Math.abs(positionMetrics.priceDiffPercent))}%
+                </span>
               </span>
-            </span>
+            </div>
             <span
               className={cn(
                 "tabular-nums font-semibold",
@@ -600,8 +670,8 @@ export default function StockDetailPage({
               {fmt(Math.abs(positionMetrics.unrealizedPnLPercent))}%)
             </span>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* ── Two-column layout ──────────────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">

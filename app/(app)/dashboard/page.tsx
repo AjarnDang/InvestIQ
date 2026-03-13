@@ -18,7 +18,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { PerformanceChart } from "@/components/charts/PerformanceChart";
 import { PortfolioAllocationChart } from "@/components/charts/PortfolioAllocationChart";
-import type { Holding } from "@/src/types";
+import type { Holding, AssetKey } from "@/src/types";
 import {
   formatCurrency,
   formatInteger,
@@ -30,7 +30,7 @@ import { useTranslations } from "@/src/i18n/useTranslations";
 import { StockScreenerTable } from "@/components/market/StockScreenerTable";
 import { SYMBOL_TO_META } from "@/src/data/sectorMap";
 
-type AssetTabKey = "us" | "th" | "etf" | "crypto" | "all";
+type AssetTabKey = AssetKey;
 type ViewMode = "sector" | "asset";
 
 const ASSET_TABS: { key: AssetTabKey; labelTH: string; labelEN: string }[] = [
@@ -38,6 +38,7 @@ const ASSET_TABS: { key: AssetTabKey; labelTH: string; labelEN: string }[] = [
   { key: "th", labelTH: "หุ้นไทย", labelEN: "Thai Stocks" },
   { key: "etf", labelTH: "ETF", labelEN: "ETFs" },
   { key: "crypto", labelTH: "คริปโต", labelEN: "Crypto" },
+  { key: "gold", labelTH: "ทองคำ", labelEN: "Gold" },
   { key: "all", labelTH: "ทั้งหมด", labelEN: "All" },
 ];
 
@@ -60,6 +61,7 @@ export default function DashboardPage() {
     const meta = SYMBOL_TO_META[h.symbol];
     if (meta?.type === "ETF") return "etf";
     if (meta?.type === "CRYPTO") return "crypto";
+    if (meta?.sector === "Commodity") return "gold";
     const exch = (meta?.exchange ?? "").toUpperCase();
     if (exch === "SET") return "th";
     return "us";
@@ -76,6 +78,7 @@ export default function DashboardPage() {
       th: { key: "th", value: 0 },
       etf: { key: "etf", value: 0 },
       crypto: { key: "crypto", value: 0 },
+      gold: { key: "gold", value: 0 },
       all: { key: "all", value: 0 },
     };
     holdings.forEach((h) => {
@@ -89,9 +92,10 @@ export default function DashboardPage() {
       th: "#0EA5E9",
       etf: "#22C55E",
       crypto: "#F97316",
+      gold: "#EAB308",
       all: "#94A3B8",
     };
-    return (["us", "th", "etf", "crypto"] as AssetTabKey[])
+    return (["us", "th", "etf", "crypto", "gold"] as AssetTabKey[])
       .map((k) => {
         const tab = ASSET_TABS.find((t) => t.key === k)!;
         const value = buckets[k].value;
