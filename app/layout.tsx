@@ -1,13 +1,25 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Poppins, Source_Serif_4, Noto_Sans_Thai } from "next/font/google";
 import "./globals.css";
 import { ReduxProvider } from "@/components/providers/ReduxProvider";
 import { MarketProvider } from "@/components/providers/MarketProvider";
 import { LocaleProvider } from "@/components/providers/LocaleProvider";
 
-const inter = Inter({
+const poppins = Poppins({
   subsets: ["latin"],
-  variable: "--font-inter",
+  weight: ["300", "400", "500", "600", "700"],
+  variable: "--font-display",
+});
+
+const serif = Source_Serif_4({
+  subsets: ["latin"],
+  variable: "--font-serif",
+});
+
+const notoThai = Noto_Sans_Thai({
+  subsets: ["thai"],
+  weight: ["300", "400", "500", "600", "700"],
+  variable: "--font-thai",
 });
 
 export const metadata: Metadata = {
@@ -23,7 +35,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.variable} font-sans antialiased`}>
+      <body
+        className={`${poppins.variable} ${serif.variable} ${notoThai.variable} font-sans antialiased`}
+      >
         <ReduxProvider>
           <LocaleProvider>
             <MarketProvider>{children}</MarketProvider>

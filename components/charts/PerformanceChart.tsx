@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useId } from "react";
 import {
   AreaChart,
   Area,
@@ -23,7 +23,8 @@ export function PerformanceChart({ data, height = 220, color = "#6366f1" }: Prop
   const isPositive =
     data.length >= 2 && data[data.length - 1].value >= data[0].value;
   const lineColor = isPositive ? "#10b981" : "#ef4444";
-  const gradientId = `perf-gradient-${Math.random().toString(36).slice(2)}`;
+  const reactId = useId();
+  const gradientId = `perf-gradient-${reactId.replace(/:/g, "")}`;
 
   return (
     <ResponsiveContainer width="100%" height={height}>

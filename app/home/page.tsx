@@ -290,11 +290,11 @@ export default function HomePage() {
                             <img
                               src={item.imageUrl}
                               alt=""
-                              className="w-full h-full object-cover"
+                              className="w-full h-full object-cover rounded-t-xl"
                               loading="lazy"
                             />
                           ) : (
-                            <div className="w-full h-full bg-slate-100 flex items-center justify-center">
+                            <div className="w-full h-full bg-slate-100 flex items-center justify-center rounded-t-xl">
                               <Newspaper size={18} className="text-slate-400" />
                             </div>
                           )}

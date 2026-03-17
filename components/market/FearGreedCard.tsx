@@ -58,11 +58,16 @@ export function FearGreedCard({ data: dataProp }: FearGreedCardProps) {
 
   useEffect(() => {
     if (dataProp != null) {
-      setData(dataProp);
-      setLoading(false);
+      queueMicrotask(() => {
+        setData(dataProp);
+        setLoading(false);
+      });
       return;
     }
-    fetchFng();
+    // Avoid setState directly inside effect body (lint rule).
+    queueMicrotask(() => {
+      fetchFng();
+    });
   }, [dataProp, fetchFng]);
 
   const effective = dataProp ?? data;

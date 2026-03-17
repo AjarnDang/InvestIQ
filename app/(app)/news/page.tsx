@@ -161,7 +161,7 @@ export default function NewsPage() {
 
           {/* News list (compact rows) */}
           {!loadingNews && filtered.length > 0 && (
-            <div className="rounded-2xl border border-slate-200 divide-y divide-slate-50">
+            <>
               {pagedNews.map((item) => {
                 const accentBorder = getSourceAccentClass(item.source);
                 return (
@@ -171,13 +171,13 @@ export default function NewsPage() {
                     locale={locale}
                     variant="compact"
                     className={cn(
-                      "border-0 rounded-none px-3 py-2",
+                      "border-0 rounded-none py-2",
                       accentBorder,
                     )}
                   />
                 );
               })}
-            </div>
+            </>
           )}
 
           {/* Pagination */}

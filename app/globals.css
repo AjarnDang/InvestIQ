@@ -1,7 +1,18 @@
 @import "tailwindcss";
 
 :root {
-  --font-inter: "Inter", sans-serif;
+  /* Radius token */
+  --radius: 1rem;
+
+  /* Strict grayscale palette (HSL 0 0% X%) */
+  --bg: 0 0% 4%;
+  --panel: 0 0% 8%;
+  --muted: 0 0% 12%;
+  --muted-2: 0 0% 16%;
+  --text: 0 0% 100%;
+  --text-80: 0 0% 80%;
+  --text-60: 0 0% 60%;
+  --text-50: 0 0% 50%;
 }
 
 * {
@@ -16,9 +27,128 @@ body {
 }
 
 body {
-  font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
+  font-family: var(--font-thai), var(--font-display), system-ui, -apple-system, sans-serif;
+  background: hsl(var(--bg));
+  color: hsl(var(--text));
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Headings default weight = 500 */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 500;
+}
+
+/* Serif accent only for italic/emphasis text inside headings */
+h1 em, h1 i, h1 .italic,
+h2 em, h2 i, h2 .italic,
+h3 em, h3 i, h3 .italic {
+  font-family: var(--font-serif), Georgia, serif;
+  font-style: italic;
+}
+
+@layer components {
+  /* Liquid Glass (light) */
+  .liquid-glass {
+    background: rgba(255, 255, 255, 0.01);
+    background-blend-mode: luminosity;
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+    border: none;
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1);
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--radius);
+  }
+  .liquid-glass::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    padding: 1.4px;
+    border-radius: inherit;
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.45) 0%,
+      rgba(255, 255, 255, 0.15) 20%,
+      transparent 40%,
+      transparent 60%,
+      rgba(255, 255, 255, 0.15) 80%,
+      rgba(255, 255, 255, 0.45) 100%
+    );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  /* Liquid Glass (strong) */
+  .liquid-glass-strong {
+    background: rgba(255, 255, 255, 0.01);
+    background-blend-mode: luminosity;
+    -webkit-backdrop-filter: blur(50px);
+    backdrop-filter: blur(50px);
+    border: none;
+    box-shadow:
+      4px 4px 4px rgba(0, 0, 0, 0.05),
+      inset 0 1px 1px rgba(255, 255, 255, 0.15);
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--radius);
+  }
+  .liquid-glass-strong::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    padding: 1.4px;
+    border-radius: inherit;
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.5) 0%,
+      rgba(255, 255, 255, 0.2) 20%,
+      transparent 40%,
+      transparent 60%,
+      rgba(255, 255, 255, 0.2) 80%,
+      rgba(255, 255, 255, 0.5) 100%
+    );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  /* Interaction helpers */
+  .interactive-scale {
+    transition: transform 200ms ease;
+  }
+  .interactive-scale:hover {
+    transform: scale(1.05);
+  }
+  .social-icon-link {
+    color: hsl(var(--text));
+    transition: color 200ms ease;
+  }
+  .social-icon-link:hover {
+    color: hsla(var(--text) / 0.8);
+  }
+  .icon-container {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 9999px;
+    background: rgba(255, 255, 255, 0.1);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
 }
 
 /* Promo carousel progress bar */
