@@ -306,12 +306,6 @@ export default function LearningPage() {
                     </p>
                   </div>
                 </div>
-
-                <div className="mt-4 text-[11px] text-slate-500">
-                  {locale === "th"
-                    ? "อ้างอิงรูปแบบการจัดหน้าเอกสารจาก Next.js Docs"
-                    : "Layout inspired by Next.js Docs."}
-                </div>
               </article>
             ))}
           </div>
