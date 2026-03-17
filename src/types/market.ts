@@ -49,6 +49,17 @@ export interface MarketIndex {
   changePercent: number;
 }
 
+export interface FearGreedData {
+  value: number;
+  classification: string;
+  timestamp: string;
+  previousClose: number | null;
+  weekAgo: number | null;
+  monthAgo: number | null;
+  yearAgo: number | null;
+  source: string;
+}
+
 export interface PriceHistory {
   date: string;
   open: number;
@@ -67,6 +78,14 @@ export interface TrendingStock {
   changePercent: number;
   volume?: number;
   marketCap?: number;
+}
+
+export interface MarketSearchResult {
+  symbol: string;
+  name: string;
+  exchange: string;
+  type: string;
+  sector?: string;
 }
 
 export interface StockDetail {

@@ -106,7 +106,7 @@ export default function HomePage() {
 
       <div className="pt-14">
         {/* ── SET Status Bar ─────────────────────────────────────────── */}
-        <div className="bg-slate-900 text-white px-4 md:px-6 py-2.5">
+        {/* <div className="bg-slate-900 text-white px-4 md:px-6 py-2.5">
           <div className="mx-auto max-w-7xl flex items-center justify-between gap-4 flex-wrap">
             <div className="flex items-center gap-5 flex-wrap">
               {loading && indices.length === 0 ? (
@@ -147,7 +147,7 @@ export default function HomePage() {
               Real-time · Yahoo Finance
             </div>
           </div>
-        </div>
+        </div> */}
 
         {/* ── Global Index Strip ─────────────────────────────────────── */}
         {/* <div className="bg-white border-b border-slate-200 py-2.5 px-4 md:px-6">

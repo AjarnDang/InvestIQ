@@ -8,7 +8,7 @@ import {
   ArrowUpRight,
 } from "lucide-react";
 import { IndexBanner } from "@/components/ui/IndexBanner";
-import { useAppSelector } from "@/src/store/hooks";
+import { useAppSelector, useAppDispatch } from "@/src/store/hooks";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import type { Stock } from "@/src/types";
 import { formatMarketCap, formatPercent, formatVolume } from "@/src/utils/formatters";
@@ -17,6 +17,7 @@ import { cn, getChangeBgColor, getChangeColor } from "@/src/utils/helpers";
 import { useTranslations } from "@/src/i18n/useTranslations";
 import { MarketSearch } from "@/components/market/MarketSearch";
 import { StockScreenerTable } from "@/components/market/StockScreenerTable";
+import { fetchAssetQuotes } from "@/src/slices/marketSlice";
 
 const ASSET_TABS = [
   { key: "us", labelTH: "หุ้นสหรัฐฯ", labelEN: "US Stocks" },
@@ -28,6 +29,7 @@ const ASSET_TABS = [
 
 export default function MarketPage() {
   const router = useRouter();
+  const dispatch = useAppDispatch();
   const { t, locale } = useTranslations();
   const { stocks, indices, globalIndices, loading, loadingGlobal } =
     useAppSelector((s) => s.market);
@@ -49,25 +51,23 @@ export default function MarketPage() {
     router.push(`/stocks/${symbol.toUpperCase()}`);
   }
 
-  async function loadAssetQuotes(asset: string) {
-    setAssetLoading(true);
-    try {
-      const res = await fetch(`/api/market/quotes?asset=${encodeURIComponent(asset)}&limit=30`);
-      if (res.ok) {
-        const data = (await res.json()) as { stocks?: Stock[] };
-        setAssetStocks(data.stocks ?? []);
-      } else {
-        setAssetStocks([]);
-      }
-    } catch {
-      setAssetStocks([]);
-    } finally {
-      setAssetLoading(false);
-    }
-  }
-
   useEffect(() => {
-    loadAssetQuotes(activeAsset);
+    let cancelled = false;
+    setAssetLoading(true);
+    dispatch(fetchAssetQuotes({ asset: activeAsset, limit: 30 }))
+      .unwrap()
+      .then((r) => {
+        if (!cancelled) setAssetStocks(r.stocks);
+      })
+      .catch(() => {
+        if (!cancelled) setAssetStocks([]);
+      })
+      .finally(() => {
+        if (!cancelled) setAssetLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [activeAsset]);
 
   return (

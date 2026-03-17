@@ -3,7 +3,16 @@ import {
   createAsyncThunk,
   type PayloadAction,
 } from "@reduxjs/toolkit";
-import type { MarketState, Stock, PriceHistory, NewsItem, TrendingStock } from "@/src/types";
+import type {
+  MarketState,
+  Stock,
+  PriceHistory,
+  NewsItem,
+  TrendingStock,
+  MarketSearchResult,
+  FearGreedData,
+  StockDetail,
+} from "@/src/types";
 import { initialMarketState } from "@/src/state/initialState";
 
 // ─── Async Thunks ─────────────────────────────────────────────────────────────
@@ -25,6 +34,67 @@ export const fetchMarketData = createAsyncThunk(
       return rejectWithValue((err as Error).message);
     }
   }
+);
+
+/** Fetch live quotes for a specific asset universe (th/us/etf/crypto/all) */
+export const fetchAssetQuotes = createAsyncThunk(
+  "market/fetchAssetQuotes",
+  async (
+    { asset, limit = 30 }: { asset: string; limit?: number },
+    { rejectWithValue }
+  ) => {
+    try {
+      const res = await fetch(
+        `/api/market/quotes?asset=${encodeURIComponent(asset)}&limit=${encodeURIComponent(
+          String(limit),
+        )}`,
+      );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = (await res.json()) as { stocks?: Stock[] };
+      return { asset, stocks: data.stocks ?? [] };
+    } catch (err) {
+      return rejectWithValue((err as Error).message);
+    }
+  },
+);
+
+export const fetchMarketSearch = createAsyncThunk(
+  "market/fetchMarketSearch",
+  async ({ q }: { q: string }, { rejectWithValue }) => {
+    try {
+      const trimmed = q.trim();
+      if (!trimmed) return { q: "", results: [] as MarketSearchResult[] };
+      const res = await fetch(`/api/market/search?q=${encodeURIComponent(trimmed)}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = (await res.json()) as { results?: MarketSearchResult[] };
+      return { q: trimmed, results: data.results ?? [] };
+    } catch (err) {
+      return rejectWithValue((err as Error).message);
+    }
+  },
+);
+
+export const fetchFearGreed = createAsyncThunk(
+  "market/fetchFearGreed",
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await fetch("/api/market/fear-greed");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = (await res.json()) as Partial<FearGreedData>;
+      return {
+        value: json.value ?? 0,
+        classification: json.classification ?? "Unknown",
+        timestamp: json.timestamp ?? "",
+        previousClose: json.previousClose ?? null,
+        weekAgo: json.weekAgo ?? null,
+        monthAgo: json.monthAgo ?? null,
+        yearAgo: json.yearAgo ?? null,
+        source: json.source ?? "alternative.me",
+      } satisfies FearGreedData;
+    } catch (err) {
+      return rejectWithValue((err as Error).message);
+    }
+  },
 );
 
 /** Fetch US market indices + USD/THB from Yahoo Finance */
@@ -90,6 +160,20 @@ export const fetchStockHistory = createAsyncThunk(
       return rejectWithValue((err as Error).message);
     }
   }
+);
+
+export const fetchStockDetail = createAsyncThunk(
+  "market/fetchStockDetail",
+  async ({ symbol }: { symbol: string }, { rejectWithValue }) => {
+    try {
+      const res = await fetch(`/api/market/detail/${encodeURIComponent(symbol)}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = (await res.json()) as { detail?: StockDetail; news?: NewsItem[] };
+      return { detail: data.detail ?? null, news: data.news ?? [] };
+    } catch (err) {
+      return rejectWithValue((err as Error).message);
+    }
+  },
 );
 
 // ─── Slice ────────────────────────────────────────────────────────────────────

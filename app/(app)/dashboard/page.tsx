@@ -12,7 +12,8 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import { useAppSelector } from "@/src/store/hooks";
+import { useAppSelector, useAppDispatch } from "@/src/store/hooks";
+import { fetchFxUsdThb } from "@/src/slices/portfolioSlice";
 import { StatCard } from "@/components/ui/StatCard";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -45,10 +46,15 @@ const ASSET_TABS: { key: AssetTabKey; labelTH: string; labelEN: string }[] = [
 // ── Page ─────────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const router = useRouter();
+  const dispatch = useAppDispatch();
   const { t, locale } = useTranslations();
   const { summary, holdings, performance, allocation } = useAppSelector((s) => s.portfolio);
   const [viewMode, setViewMode] = useState<ViewMode>("sector");
   const [activeAsset, setActiveAsset] = useState<AssetTabKey>("all");
+
+  const cashThbEq =
+    (summary.cashBalances?.THB ?? 0) +
+    (summary.cashBalances?.USD ?? 0) * (summary.fxUsdThb ?? 35);
 
   const summaryRef = useRef<HTMLDivElement | null>(null);
   const [showLeft, setShowLeft] = useState(false);
@@ -121,6 +127,10 @@ export default function DashboardPage() {
     const t = setTimeout(updateSummaryArrows, 120);
     return () => clearTimeout(t);
   }, [updateSummaryArrows, summary.totalValue, summary.totalPnL, summary.dailyPnL, holdings.length]);
+
+  useEffect(() => {
+    dispatch(fetchFxUsdThb());
+  }, [dispatch]);
 
   const scrollSummaryBy = useCallback((dir: "left" | "right") => {
     summaryRef.current?.scrollBy({
@@ -242,7 +252,7 @@ export default function DashboardPage() {
           <div className="shrink-0 flex flex-col rounded-xl border border-slate-200 bg-white p-5 shadow-sm min-w-[100px] cursor-pointer hover:border-indigo-300 hover:shadow-md transition-all group">
             <StatCard
               title={locale === "th" ? "เงินสด" : "Cash Balance"}
-              value={formatCurrency(summary.cashBalance)}
+              value={formatCurrency(cashThbEq)}
               icon={<Wallet size={16} className="text-amber-600" />}
               iconBg="bg-amber-50"
             />

@@ -153,7 +153,11 @@ export const MOCK_PORTFOLIO_SUMMARY: PortfolioSummary = {
   totalPnLPercent: 9.35,
   dailyPnL: 3825,
   dailyPnLPercent: 0.59,
-  cashBalance: 45320,
+  cashBalances: {
+    THB: 45320,
+    USD: 1500,
+  },
+  fxUsdThb: 35,
 };
 
 export const MOCK_ALLOCATION: AllocationData[] = [

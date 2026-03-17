@@ -4,6 +4,8 @@ import React, { useEffect, useState } from "react";
 import { Gauge, RefreshCw } from "lucide-react";
 import { useTranslations } from "@/src/i18n/useTranslations";
 import { cn } from "@/src/utils/helpers";
+import { useAppDispatch } from "@/src/store/hooks";
+import { fetchFearGreed } from "@/src/slices/marketSlice";
 
 const FG_ZONES = [
   { max: 25, label: "Extreme Fear", color: "#ef4444", bg: "bg-red-50", text: "text-red-500" },
@@ -35,6 +37,7 @@ export interface FearGreedCardProps {
 
 export function FearGreedCard({ data: dataProp }: FearGreedCardProps) {
   const { t, locale } = useTranslations();
+  const dispatch = useAppDispatch();
   const [data, setData] = useState<FearGreedData | null>(dataProp ?? null);
   const [loading, setLoading] = useState(!dataProp);
   const [error, setError] = useState<string | null>(null);
@@ -43,27 +46,15 @@ export function FearGreedCard({ data: dataProp }: FearGreedCardProps) {
     if (dataProp != null) return;
     setLoading(true);
     setError(null);
-    try {
-      const res = await fetch("/api/market/fear-greed");
-      if (!res.ok) throw new Error("Fetch failed");
-      const json = await res.json();
-      setData({
-        value: json.value ?? 0,
-        classification: json.classification ?? "Unknown",
-        timestamp: json.timestamp ?? "",
-        previousClose: json.previousClose ?? null,
-        weekAgo: json.weekAgo ?? null,
-        monthAgo: json.monthAgo ?? null,
-        yearAgo: json.yearAgo ?? null,
-        source: json.source ?? "alternative.me",
-      });
-    } catch (e) {
-      setError(locale === "th" ? "โหลดไม่สำเร็จ" : "Failed to load");
-      setData(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [dataProp, locale]);
+    dispatch(fetchFearGreed())
+      .unwrap()
+      .then((r) => setData(r))
+      .catch(() => {
+        setError(locale === "th" ? "โหลดไม่สำเร็จ" : "Failed to load");
+        setData(null);
+      })
+      .finally(() => setLoading(false));
+  }, [dataProp, dispatch, locale]);
 
   useEffect(() => {
     if (dataProp != null) {

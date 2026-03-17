@@ -26,11 +26,17 @@ import type { StockDetail } from "@/app/api/market/detail/[symbol]/route";
 import type { NewsItem, PriceHistory, Holding, AssetKey } from "@/src/types";
 import { useTranslations } from "@/src/i18n/useTranslations";
 import { NewsCard } from "@/components/ui/NewsCard";
+import { Modal } from "@/components/ui/Modal";
+import { fetchStockDetail, fetchStockHistory } from "@/src/slices/marketSlice";
 import {
   calculatePositionCostMetrics,
   type PositionCostMetrics,
 } from "@/src/functions/portfolioFunctions";
 import { SYMBOL_TO_META } from "@/src/data/sectorMap";
+import { formatCurrency } from "@/src/utils/formatters";
+import { addTransaction } from "@/src/slices/transactionSlice";
+import { buyStock, sellStock, fetchFxUsdThb } from "@/src/slices/portfolioSlice";
+import { generateId } from "@/src/utils/helpers";
 
 // ── Range selector ─────────────────────────────────────────────────────────
 const RANGE_OPTIONS = [
@@ -184,53 +190,270 @@ export default function StockDetailPage({
   const holdingForSymbol: Holding | undefined = holdings.find(
     (h) => h.symbol === sym,
   );
+  const cashBalances = useAppSelector((s) => s.portfolio.summary.cashBalances);
+  const fxUsdThb = useAppSelector((s) => s.portfolio.summary.fxUsdThb);
   const positionMetrics: PositionCostMetrics | null =
     calculatePositionCostMetrics(
       holdingForSymbol ?? null,
       detail?.price ?? null,
     );
 
+  type TradeSide = "BUY" | "SELL";
+  type TradeMode = "THB" | "USD" | "SHARES";
+
+  const [tradeSide, setTradeSide] = useState<TradeSide>("BUY");
+  const [buyMode, setBuyMode] = useState<TradeMode>("SHARES");
+  const [sellMode, setSellMode] = useState<TradeMode>("SHARES");
+  const activeMode = tradeSide === "BUY" ? buyMode : sellMode;
+
+  const [tradeInput, setTradeInput] = useState<number>(1);
+  const [tradeBusy, setTradeBusy] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalVariant, setModalVariant] = useState<
+    "success" | "error" | "info"
+  >("info");
+  const [modalTitle, setModalTitle] = useState("");
+  const [modalDesc, setModalDesc] = useState<React.ReactNode>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  function openModal(
+    v: "success" | "error" | "info",
+    title: string,
+    desc?: React.ReactNode,
+  ) {
+    setModalVariant(v);
+    setModalTitle(title);
+    setModalDesc(desc ?? null);
+    setModalOpen(true);
+  }
+
+  function isMobile() {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia("(max-width: 640px)").matches;
+  }
+
+  function getQuoteCurrency(): import("@/src/types").CashCurrency {
+    return detail?.currency === "USD" ? "USD" : "THB";
+  }
+
+  function getSettlementCurrency(): import("@/src/types").CashCurrency {
+    // Requirement: US stocks settle in USD; Thai/others settle in THB.
+    // We approximate using quote currency.
+    return getQuoteCurrency() === "USD" ? "USD" : "THB";
+  }
+
+  function getPayCurrency(side: TradeSide): import("@/src/types").CashCurrency {
+    const mode = side === "BUY" ? buyMode : sellMode;
+    if (mode === "THB") return "THB";
+    if (mode === "USD") return "USD";
+    // Shares mode: default to quote currency
+    return getQuoteCurrency();
+  }
+
+  function getQtyFromInput(side: TradeSide): number {
+    if (!detail?.price) return 0;
+    const price = detail.price;
+    const mode = side === "BUY" ? buyMode : sellMode;
+    const input = Number.isFinite(tradeInput) ? tradeInput : 0;
+
+    if (mode === "SHARES") return Math.max(1, Math.floor(input));
+    // For amount-based modes, compute an integer share quantity.
+    // Note: This is a UI-mode switch only; we treat THB/USD as "amount budget/target".
+    if (mode === "THB" || mode === "USD") {
+      return Math.max(1, Math.floor(input / price));
+    }
+    return Math.max(1, Math.floor(input));
+  }
+
+  function getModeLabel(mode: TradeMode) {
+    if (locale === "th") {
+      if (mode === "THB") return "ซื้อเงินบาท";
+      if (mode === "USD") return "ซื้อเงิน USD";
+      return "จำนวนหุ้น";
+    }
+    if (mode === "THB") return "Buy THB";
+    if (mode === "USD") return "Buy USD";
+    return "Shares";
+  }
+
+  function getInputLabel(side: TradeSide, mode: TradeMode) {
+    if (locale === "th") {
+      if (mode === "SHARES") return side === "BUY" ? "จำนวนหุ้นที่ต้องการซื้อ" : "จำนวนหุ้นที่ต้องการขาย";
+      if (mode === "THB") return side === "BUY" ? "งบประมาณ (THB)" : "มูลค่าที่ต้องการขาย (THB)";
+      return side === "BUY" ? "งบประมาณ (USD)" : "มูลค่าที่ต้องการขาย (USD)";
+    }
+    if (mode === "SHARES") return side === "BUY" ? "Buy shares" : "Sell shares";
+    if (mode === "THB") return side === "BUY" ? "Budget (THB)" : "Target value (THB)";
+    return side === "BUY" ? "Budget (USD)" : "Target value (USD)";
+  }
+
+  function openConfirm(side: TradeSide) {
+    setTradeSide(side);
+    if (isMobile()) setConfirmOpen(true);
+  }
+
+  async function executeBuy() {
+    if (!detail?.price || tradeBusy) return;
+    const qty = getQtyFromInput("BUY");
+    const price = detail.price;
+    const feeRate = 0.0025;
+    const fee = Math.round(qty * price * feeRate * 100) / 100;
+    const quoteCurrency = getQuoteCurrency();
+    const payCurrency = getPayCurrency("BUY");
+    const totalInQuote = qty * price + fee;
+    const fx = fxUsdThb || 35;
+    const required =
+      quoteCurrency === payCurrency
+        ? totalInQuote
+        : quoteCurrency === "USD"
+          ? totalInQuote * fx
+          : totalInQuote / fx;
+
+    if ((cashBalances?.[payCurrency] ?? 0) < required) {
+      openModal(
+        "error",
+        locale === "th" ? "ซื้อไม่สำเร็จ" : "Buy failed",
+        locale === "th"
+          ? `ยอดเงิน ${payCurrency} ไม่พอ (ต้องใช้ ${formatCurrency(required)})`
+          : `Insufficient ${payCurrency} cash (need ${formatCurrency(required)})`,
+      );
+      return;
+    }
+
+    setTradeBusy(true);
+    // Simulate async processing: check cash first, then update later.
+    await new Promise((r) => setTimeout(r, 450));
+
+    dispatch(
+      buyStock({
+        symbol: sym,
+        name: detail.name,
+        sector: (detail.sector ?? "Other") as import("@/src/types").StockSector,
+        quantity: qty,
+        price,
+        fee,
+        quoteCurrency,
+        payCurrency,
+      }),
+    );
+    dispatch(
+      addTransaction({
+        id: generateId("TXN"),
+        type: "BUY",
+        symbol: sym,
+        name: detail.name,
+        quantity: qty,
+        price,
+        amount: qty * price,
+        fee,
+        status: "COMPLETED",
+        date: new Date().toISOString().slice(0, 10),
+      }),
+    );
+
+    setTradeBusy(false);
+    openModal(
+      "success",
+      locale === "th" ? "ซื้อสำเร็จ" : "Buy successful",
+      locale === "th"
+        ? `ซื้อ ${sym} จำนวน ${qty.toLocaleString()} หน่วย รวม ${formatCurrency(
+            totalInQuote,
+          )}`
+        : `Bought ${qty.toLocaleString()} ${sym}. Total ${formatCurrency(totalInQuote)}`,
+    );
+  }
+
+  async function executeSell() {
+    if (!detail?.price || tradeBusy || !holdingForSymbol) return;
+    const qty = getQtyFromInput("SELL");
+    if (qty > holdingForSymbol.quantity) {
+      openModal(
+        "error",
+        locale === "th" ? "ขายไม่สำเร็จ" : "Sell failed",
+        locale === "th"
+          ? `จำนวนที่ขายมากกว่าที่มีอยู่ (มี ${holdingForSymbol.quantity.toLocaleString()})`
+          : `Sell quantity exceeds holding (have ${holdingForSymbol.quantity.toLocaleString()})`,
+      );
+      return;
+    }
+
+    setTradeBusy(true);
+    await new Promise((r) => setTimeout(r, 450));
+
+    const price = detail.price;
+    const feeRate = 0.0025;
+    const fee = Math.round(qty * price * feeRate * 100) / 100;
+    const quoteCurrency = getQuoteCurrency();
+    const settlementCurrency = getSettlementCurrency();
+    const total = qty * price - fee;
+
+    dispatch(
+      sellStock({
+        symbol: sym,
+        quantity: qty,
+        price,
+        fee,
+        quoteCurrency,
+        settlementCurrency,
+      }),
+    );
+    dispatch(
+      addTransaction({
+        id: generateId("TXN"),
+        type: "SELL",
+        symbol: sym,
+        name: detail.name,
+        quantity: qty,
+        price,
+        amount: qty * price,
+        fee,
+        status: "COMPLETED",
+        date: new Date().toISOString().slice(0, 10),
+      }),
+    );
+
+    setTradeBusy(false);
+    openModal(
+      "success",
+      locale === "th" ? "ขายสำเร็จ" : "Sell successful",
+      locale === "th"
+        ? `ขาย ${sym} จำนวน ${qty.toLocaleString()} หน่วย รับสุทธิ ${formatCurrency(
+            total,
+          )}`
+        : `Sold ${qty.toLocaleString()} ${sym}. Net ${formatCurrency(total)}`,
+    );
+  }
+
   // ── Fetch price history for the given range ────────────────────────────
   async function fetchHistory(rangeLabel: RangeLabel) {
     const opt = RANGE_OPTIONS.find((r) => r.label === rangeLabel)!;
     setHistLoading(true);
-    try {
-      const res = await fetch(
-        `/api/market/history?symbol=${sym}&range=${opt.range}&interval=${opt.interval}`,
-      );
-      if (res.ok) {
-        const h = await res.json();
-        setHistory(h.history ?? []);
-      }
-    } catch {
-      // non-fatal — chart shows empty
-    } finally {
-      setHistLoading(false);
-    }
+    dispatch(fetchStockHistory({ symbol: sym, range: opt.range }))
+      .unwrap()
+      .then((h) => setHistory(h ?? []))
+      .catch(() => {
+        // non-fatal — chart shows empty
+        setHistory([]);
+      })
+      .finally(() => setHistLoading(false));
   }
 
   // ── Fetch stock detail (hero section) ─────────────────────────────────
   async function loadDetail() {
     setLoading(true);
     setError(null);
-    try {
-      const res = await fetch(`/api/market/detail/${sym}`);
-      if (res.ok) {
-        const d = await res.json();
+    dispatch(fetchStockDetail({ symbol: sym }))
+      .unwrap()
+      .then((d) => {
         setDetail(d.detail ?? null);
         setNews(d.news ?? []);
-      } else {
-        setError(locale === "th" ? "ไม่พบข้อมูลหุ้นนี้" : "Stock not found");
-      }
-    } catch {
-      setError(
-        locale === "th"
-          ? "เกิดข้อผิดพลาดในการโหลดข้อมูล"
-          : "Failed to load data",
-      );
-    } finally {
-      setLoading(false);
-    }
+      })
+      .catch(() => {
+        setError(
+          locale === "th" ? "เกิดข้อผิดพลาดในการโหลดข้อมูล" : "Failed to load data",
+        );
+      })
+      .finally(() => setLoading(false));
   }
 
   // Full refresh (used by the refresh button)
@@ -247,6 +470,11 @@ export default function StockDetailPage({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sym]);
+
+  // Load live USD/THB FX rate (Yahoo Finance)
+  useEffect(() => {
+    dispatch(fetchFxUsdThb());
+  }, [dispatch]);
 
   // On range change: only re-fetch history
   useEffect(() => {
@@ -336,6 +564,116 @@ export default function StockDetailPage({
 
   return (
     <div className="space-y-5">
+      <Modal
+        open={modalOpen}
+        variant={modalVariant}
+        title={modalTitle}
+        description={modalDesc ?? undefined}
+        primaryLabel={locale === "th" ? "ตกลง" : "OK"}
+        onClose={() => setModalOpen(false)}
+        onPrimary={() => setModalOpen(false)}
+        disableClose={tradeBusy}
+      />
+
+      <Modal
+        open={confirmOpen}
+        variant="info"
+        title={locale === "th" ? "ยืนยันรายการ" : "Confirm trade"}
+        description={
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2">
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                  {locale === "th" ? "สัญลักษณ์" : "Symbol"}
+                </p>
+                <p className="font-bold text-slate-800">{sym}</p>
+              </div>
+              <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2">
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                  {locale === "th" ? "ราคาปัจจุบัน" : "Price"}
+                </p>
+                <p className="font-bold text-slate-800">
+                  {detail?.currency === "THB" ? "฿" : "$"}
+                  {fmt(detail?.price)}
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-white p-3">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs font-semibold text-slate-800">
+                  {tradeSide === "BUY"
+                    ? locale === "th"
+                      ? "ซื้อ"
+                      : "Buy"
+                    : locale === "th"
+                      ? "ขาย"
+                      : "Sell"}
+                </p>
+                <p className="text-[11px] text-slate-500 tabular-nums">
+                  {locale === "th" ? "เงินสดคงเหลือ" : "Cash"}:{" "}
+                  <span className="font-semibold text-slate-700">
+                    THB {formatCurrency(cashBalances?.THB ?? 0)} • USD{" "}
+                    {formatCurrency(cashBalances?.USD ?? 0)}
+                  </span>
+                </p>
+              </div>
+
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <select
+                  value={activeMode}
+                  onChange={(e) => {
+                    const v = e.target.value as TradeMode;
+                    if (tradeSide === "BUY") setBuyMode(v);
+                    else setSellMode(v);
+                  }}
+                  className="h-9 w-full rounded-xl border border-slate-200 bg-slate-50 px-2 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  title="Trade mode"
+                >
+                  <option value="THB">{getModeLabel("THB")}</option>
+                  <option value="USD">{getModeLabel("USD")}</option>
+                  <option value="SHARES">{getModeLabel("SHARES")}</option>
+                </select>
+                <input
+                  type="number"
+                  min={1}
+                  step={activeMode === "SHARES" ? 1 : 10}
+                  value={tradeInput}
+                  onChange={(e) => setTradeInput(Number(e.target.value))}
+                  className="h-9 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  aria-label="Trade input"
+                />
+              </div>
+
+              <div className="mt-2 text-[11px] text-slate-500 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span>{getInputLabel(tradeSide, activeMode)}</span>
+                  <span className="font-semibold text-slate-700 tabular-nums">
+                    {Number.isFinite(tradeInput) ? tradeInput.toLocaleString() : "—"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>{locale === "th" ? "จำนวนหุ้นประมาณการ" : "Estimated shares"}</span>
+                  <span className="font-semibold text-slate-700 tabular-nums">
+                    {getQtyFromInput(tradeSide).toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        }
+        primaryLabel={locale === "th" ? "ยืนยัน" : "Confirm"}
+        secondaryLabel={locale === "th" ? "ยกเลิก" : "Cancel"}
+        onClose={() => setConfirmOpen(false)}
+        onSecondary={() => setConfirmOpen(false)}
+        onPrimary={async () => {
+          setConfirmOpen(false);
+          if (tradeSide === "BUY") await executeBuy();
+          else await executeSell();
+        }}
+        disableClose={tradeBusy}
+      />
+
       {/* ── Back nav ────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-3">
         <button
@@ -356,322 +694,562 @@ export default function StockDetailPage({
       </div>
 
       {/* ── Hero header ─────────────────────────────────────────────────── */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-5 py-5 md:px-6">
-          <section>
-            {/* Left: name + badges */}
-            <div className="min-w-0">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm text-slate-500 truncate max-w-xs">
-                    {detail.name}
-                  </p>
-                  <div className="flex items-center gap-2 flex-wrap mb-1">
-                    <span className="text-2xl font-black text-slate-900">
-                      {sym}
-                    </span>
-                  </div>
-                  <div className="mb-1">
-                    <p className="md:text-3xl text-2xl font-black tabular-nums text-slate-900">
-                      {detail.currency === "THB" ? "฿" : "$"}
-                      {fmt(detail.price)}
+
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
+        <div className="xl:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-5 py-5 md:px-6">
+            <section>
+              {/* Left: name + badges */}
+              <div className="min-w-0">
+                <div className="flex items-start justify-between w-full">
+                  <div>
+                    <p className="text-sm text-slate-500 truncate max-w-xs">
+                      {detail.name}
                     </p>
-                    <div
-                      className={cn(
-                        "flex items-center justify-start gap-1 text-sm font-bold tabular-nums",
-                        positive ? "text-emerald-600" : "text-red-500",
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      <span className="text-2xl font-black text-slate-900">
+                        {sym}
+                      </span>
+                    </div>
+                    <div className="mb-1">
+                      <p className="md:text-3xl text-2xl font-black tabular-nums text-slate-900">
+                        {detail.currency === "THB" ? "฿" : "$"}
+                        {fmt(detail.price)}
+                      </p>
+                      <div
+                        className={cn(
+                          "flex items-center justify-start gap-1 text-sm font-bold tabular-nums",
+                          positive ? "text-emerald-600" : "text-red-500",
+                        )}
+                      >
+                        {positive ? (
+                          <TrendingUp size={14} />
+                        ) : (
+                          <TrendingDown size={14} />
+                        )}
+                        {positive ? "+" : ""}
+                        {fmt(detail.change)} ({positive ? "+" : ""}
+                        {fmt(detail.changePercent)}%)
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right: price + watchlist */}
+                  <div className="flex flex-col items-end justify-end gap-1 sm:gap-1 shrink-0 w-fit">
+                    <div className="flex items-center justify-end gap-1.5 flex-wrap max-w-48 md:max-w-full">
+                      {detail.exchange && (
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">
+                          {detail.exchange}
+                        </span>
                       )}
-                    >
-                      {positive ? (
-                        <TrendingUp size={14} />
-                      ) : (
-                        <TrendingDown size={14} />
+                      {detail.quoteType && (
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                          {QUOTE_TYPE_LABEL[detail.quoteType] ??
+                            detail.quoteType}
+                        </span>
                       )}
-                      {positive ? "+" : ""}
-                      {fmt(detail.change)} ({positive ? "+" : ""}
-                      {fmt(detail.changePercent)}%)
+                      {(detail.sector || detail.industry) && (
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {detail.sector && (
+                            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-violet-50 text-violet-700">
+                              {detail.sector}
+                            </span>
+                          )}
+                          {detail.industry && (
+                            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
+                              {detail.industry}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      {(hasPre || hasPost) && (
+                        <div className="flex flex-col gap-1 text-[11px] text-slate-500">
+                          {hasPre && (
+                            <div className="flex items-center justify-end gap-2">
+                              <span className="rounded-full bg-slate-100 px-2 py-0.5 font-semibold text-slate-600">
+                                {locale === "th" ? "ก่อนเปิดตลาด" : "Pre"}
+                              </span>
+                              <span className="tabular-nums text-slate-700">
+                                {detail.currency === "THB" ? "฿" : "$"}
+                                {fmt(detail.preMarketPrice)}
+                              </span>
+                              {typeof detail.preMarketChangePercent ===
+                                "number" && (
+                                <span
+                                  className={cn(
+                                    "tabular-nums font-semibold",
+                                    detail.preMarketChangePercent >= 0
+                                      ? "text-emerald-600"
+                                      : "text-red-500",
+                                  )}
+                                >
+                                  {detail.preMarketChangePercent >= 0
+                                    ? "+"
+                                    : ""}
+                                  {fmt(detail.preMarketChangePercent)}%
+                                </span>
+                              )}
+                            </div>
+                          )}
+                          {hasPost && (
+                            <div className="flex items-center justify-end gap-2">
+                              <span className="rounded-full bg-slate-100 px-2 py-0.5 font-semibold text-slate-600">
+                                {locale === "th" ? "หลังปิดตลาด" : "Post"}
+                              </span>
+                              <span className="tabular-nums text-slate-700">
+                                {detail.currency === "THB" ? "฿" : "$"}
+                                {fmt(detail.postMarketPrice)}
+                              </span>
+                              {typeof detail.postMarketChangePercent ===
+                                "number" && (
+                                <span
+                                  className={cn(
+                                    "tabular-nums font-semibold",
+                                    detail.postMarketChangePercent >= 0
+                                      ? "text-emerald-600"
+                                      : "text-red-500",
+                                  )}
+                                >
+                                  {detail.postMarketChangePercent >= 0
+                                    ? "+"
+                                    : ""}
+                                  {fmt(detail.postMarketChangePercent)}%
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={toggleWatch}
+                        className={cn(
+                          "flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition-colors border",
+                          isWatched
+                            ? "bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100"
+                            : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200",
+                        )}
+                      >
+                        {isWatched ? <StarOff size={13} /> : <Star size={13} />}
+                        {isWatched
+                          ? locale === "th"
+                            ? "ยกเลิกติดตาม"
+                            : "Unwatch"
+                          : t("watchlist.title")}
+                      </button>
+                      <button
+                        onClick={reload}
+                        className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100 transition-colors"
+                        aria-label="Refresh data"
+                      >
+                        <RefreshCw size={13} />
+                      </button>
                     </div>
                   </div>
                 </div>
 
-                {/* Right: price + watchlist */}
-                <div className="flex flex-row sm:flex-col items-end gap-1 sm:gap-1 shrink-0">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {detail.exchange && (
-                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">
-                        {detail.exchange}
-                      </span>
-                    )}
-                    {detail.quoteType && (
-                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
-                        {QUOTE_TYPE_LABEL[detail.quoteType] ?? detail.quoteType}
-                      </span>
-                    )}
-                    {(detail.sector || detail.industry) && (
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        {detail.sector && (
-                          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-violet-50 text-violet-700">
-                            {detail.sector}
-                          </span>
-                        )}
-                        {detail.industry && (
-                          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
-                            {detail.industry}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  <div className="text-right">
-                    {(hasPre || hasPost) && (
-                      <div className="flex flex-col gap-1 text-[11px] text-slate-500">
-                        {hasPre && (
-                          <div className="flex items-center justify-end gap-2">
-                            <span className="rounded-full bg-slate-100 px-2 py-0.5 font-semibold text-slate-600">
-                              {locale === "th" ? "ก่อนเปิดตลาด" : "Pre"}
-                            </span>
-                            <span className="tabular-nums text-slate-700">
-                              {detail.currency === "THB" ? "฿" : "$"}
-                              {fmt(detail.preMarketPrice)}
-                            </span>
-                            {typeof detail.preMarketChangePercent ===
-                              "number" && (
-                              <span
-                                className={cn(
-                                  "tabular-nums font-semibold",
-                                  detail.preMarketChangePercent >= 0
-                                    ? "text-emerald-600"
-                                    : "text-red-500",
-                                )}
-                              >
-                                {detail.preMarketChangePercent >= 0 ? "+" : ""}
-                                {fmt(detail.preMarketChangePercent)}%
-                              </span>
-                            )}
-                          </div>
-                        )}
-                        {hasPost && (
-                          <div className="flex items-center justify-end gap-2">
-                            <span className="rounded-full bg-slate-100 px-2 py-0.5 font-semibold text-slate-600">
-                              {locale === "th" ? "หลังปิดตลาด" : "Post"}
-                            </span>
-                            <span className="tabular-nums text-slate-700">
-                              {detail.currency === "THB" ? "฿" : "$"}
-                              {fmt(detail.postMarketPrice)}
-                            </span>
-                            {typeof detail.postMarketChangePercent ===
-                              "number" && (
-                              <span
-                                className={cn(
-                                  "tabular-nums font-semibold",
-                                  detail.postMarketChangePercent >= 0
-                                    ? "text-emerald-600"
-                                    : "text-red-500",
-                                )}
-                              >
-                                {detail.postMarketChangePercent >= 0 ? "+" : ""}
-                                {fmt(detail.postMarketChangePercent)}%
-                              </span>
-                            )}
-                          </div>
-                        )}
-                      </div>
+                {/* Chart header: title + range buttons */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-5 py-3.5 border-b border-slate-100">
+                  <div className="flex items-center gap-2">
+                    <Activity size={14} className="text-slate-500" />
+                    <h2 className="text-sm font-semibold text-slate-800">
+                      {t("stocks.chart")}
+                    </h2>
+                    {histLoading && (
+                      <RefreshCw
+                        size={11}
+                        className="animate-spin text-slate-400"
+                      />
                     )}
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={toggleWatch}
-                      className={cn(
-                        "flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition-colors border",
-                        isWatched
-                          ? "bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100"
-                          : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200",
-                      )}
-                    >
-                      {isWatched ? <StarOff size={13} /> : <Star size={13} />}
-                      {isWatched
-                        ? locale === "th"
-                          ? "ยกเลิกติดตาม"
-                          : "Unwatch"
-                        : t("watchlist.title")}
-                    </button>
-                    <button
-                      onClick={reload}
-                      className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100 transition-colors"
-                      aria-label="Refresh data"
-                    >
-                      <RefreshCw size={13} />
-                    </button>
+                  {/* Range filter buttons */}
+                  <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
+                    {RANGE_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.label}
+                        onClick={() => setActiveRange(opt.label)}
+                        className={cn(
+                          "shrink-0 px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors",
+                          activeRange === opt.label
+                            ? "bg-indigo-600 text-white"
+                            : "text-slate-500 hover:bg-slate-100 hover:text-slate-700",
+                        )}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
                   </div>
                 </div>
-              </div>
 
-              {/* Chart header: title + range buttons */}
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-5 py-3.5 border-b border-slate-100">
-                <div className="flex items-center gap-2">
-                  <Activity size={14} className="text-slate-500" />
-                  <h2 className="text-sm font-semibold text-slate-800">
-                    {t("stocks.chart")}
-                  </h2>
-                  {histLoading && (
-                    <RefreshCw
-                      size={11}
-                      className="animate-spin text-slate-400"
+                <div className="p-4">
+                  {histLoading && history.length === 0 ? (
+                    <div
+                      className="animate-pulse bg-slate-100 rounded-xl"
+                      style={{ height: 220 }}
                     />
+                  ) : history.length > 0 ? (
+                    <StockPriceChart
+                      data={history}
+                      height={220}
+                      currency={detail.currency ?? "THB"}
+                      intraday={isIntraday}
+                    />
+                  ) : (
+                    <div
+                      className="flex items-center justify-center text-sm text-slate-400"
+                      style={{ height: 220 }}
+                    >
+                      {locale === "th"
+                        ? "ไม่มีข้อมูลกราฟ"
+                        : "No chart data available"}
+                    </div>
                   )}
                 </div>
+              </div>
+            </section>
+          </div>
 
-                {/* Range filter buttons */}
-                <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
-                  {RANGE_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.label}
-                      onClick={() => setActiveRange(opt.label)}
+          {/* Day range bar */}
+          {detail.dayLow != null &&
+            detail.dayHigh != null &&
+            detail.dayLow !== detail.dayHigh && (
+              <div className="px-5 md:px-6 pb-4">
+                <div className="flex items-center gap-3 text-xs text-slate-500">
+                  <span className="tabular-nums">{fmt(detail.dayLow)}</span>
+                  <div className="relative flex-1 h-1.5 rounded-full bg-slate-100">
+                    <div
                       className={cn(
-                        "shrink-0 px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors",
-                        activeRange === opt.label
-                          ? "bg-indigo-600 text-white"
-                          : "text-slate-500 hover:bg-slate-100 hover:text-slate-700",
+                        "h-full rounded-full",
+                        positive ? "bg-emerald-400" : "bg-red-400",
                       )}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
+                      style={{
+                        width: `${Math.min(100, Math.max(0, ((detail.price - detail.dayLow) / (detail.dayHigh - detail.dayLow)) * 100))}%`,
+                      }}
+                    />
+                  </div>
+                  <span className="tabular-nums">{fmt(detail.dayHigh)}</span>
+                  <span className="text-slate-400 hidden sm:block">
+                    {locale === "th" ? "วันนี้" : "Today"}
+                  </span>
                 </div>
               </div>
-
-              <div className="p-4">
-                {histLoading && history.length === 0 ? (
-                  <div
-                    className="animate-pulse bg-slate-100 rounded-xl"
-                    style={{ height: 220 }}
-                  />
-                ) : history.length > 0 ? (
-                  <StockPriceChart
-                    data={history}
-                    height={220}
-                    currency={detail.currency ?? "THB"}
-                    intraday={isIntraday}
-                  />
-                ) : (
-                  <div
-                    className="flex items-center justify-center text-sm text-slate-400"
-                    style={{ height: 220 }}
-                  >
-                    {locale === "th"
-                      ? "ไม่มีข้อมูลกราฟ"
-                      : "No chart data available"}
-                  </div>
-                )}
-              </div>
-            </div>
-          </section>
+            )}
         </div>
 
-        {/* Day range bar */}
-        {detail.dayLow != null &&
-          detail.dayHigh != null &&
-          detail.dayLow !== detail.dayHigh && (
-            <div className="px-5 md:px-6 pb-4">
-              <div className="flex items-center gap-3 text-xs text-slate-500">
-                <span className="tabular-nums">{fmt(detail.dayLow)}</span>
-                <div className="relative flex-1 h-1.5 rounded-full bg-slate-100">
-                  <div
+        {/* Trade panel */}
+        <div className="mt-2 w-full max-w-full space-y-5">
+          {positionMetrics && (
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden p-4">
+              <div className="hidden sm:block text-sm text-slate-500 space-y-2">
+                {holdingForSymbol && (
+                  <span
                     className={cn(
-                      "h-full rounded-full",
-                      positive ? "bg-emerald-400" : "bg-red-400",
+                      "px-2 py-0.5 rounded-full font-semibold",
+                      getAssetBadgeClass(getAssetKeyForSymbol(sym)),
                     )}
-                    style={{
-                      width: `${Math.min(100, Math.max(0, ((detail.price - detail.dayLow) / (detail.dayHigh - detail.dayLow)) * 100))}%`,
-                    }}
-                  />
-                </div>
-                <span className="tabular-nums">{fmt(detail.dayHigh)}</span>
-                <span className="text-slate-400 hidden sm:block">
-                  {locale === "th" ? "วันนี้" : "Today"}
-                </span>
-              </div>
-            </div>
-          )}
-      </div>
-
-      {positionMetrics && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden p-4">
-          <div className="hidden sm:block text-sm text-slate-500 space-y-2">
-            {holdingForSymbol && (
-              <span
-                className={cn(
-                  "px-2 py-0.5 rounded-full font-semibold",
-                  getAssetBadgeClass(getAssetKeyForSymbol(sym)),
-                )}
-              >
-                {getAssetBadgeLabel(getAssetKeyForSymbol(sym), locale)}
-              </span>
-            )}
-            <div className="grid grid-cols-2 items-center gap-4 mt-2">
-              <div className="col-span-1 tabular-nums">
-                {locale === "th" ? "จำนวน" : "Shares"}:{" "}
-                <span className="font-semibold text-slate-700">
-                  {positionMetrics.quantity.toLocaleString()}{" "}
-                </span>
-                {positionMetrics.quantity > 1 && (
-                  <span className="text-slate-400">
-                    {locale === "th" ? "หุ้น" : ""}
+                  >
+                    {getAssetBadgeLabel(getAssetKeyForSymbol(sym), locale)}
                   </span>
                 )}
-              </div>
-              <div className="col-span-1 tabular-nums">
-                {locale === "th" ? "ต้นทุนเฉลี่ย" : "Avg cost"}:{" "}
-                <span className="font-semibold text-slate-700">
-                  {detail.currency === "THB" ? "฿" : "$"}
-                  {fmt(positionMetrics.avgCost)}
-                </span>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 items-center gap-4">
-              <span className="col-span-1 tabular-nums">
-                {locale === "th" ? "มูลค่าต้นทุน" : "Cost basis"}:{" "}
-                <span className="font-semibold text-slate-700">
-                  {detail.currency === "THB" ? "฿" : "$"}
-                  {fmt(positionMetrics.costBasis)}
-                </span>
-              </span>
-              <span className="col-span-1 tabular-nums">
-                {locale === "th" ? "มูลค่าล่าสุด" : "Latest vs cost"}:{" "}
+                <div className="grid grid-cols-2 items-center gap-4 mt-2">
+                  <div className="col-span-1 tabular-nums">
+                    {locale === "th" ? "จำนวน" : "Shares"}:{" "}
+                    <span className="font-semibold text-slate-700">
+                      {positionMetrics.quantity.toLocaleString()}{" "}
+                    </span>
+                    {positionMetrics.quantity > 1 && (
+                      <span className="text-slate-400">
+                        {locale === "th" ? "หุ้น" : ""}
+                      </span>
+                    )}
+                  </div>
+                  <div className="col-span-1 tabular-nums">
+                    {locale === "th" ? "ต้นทุนเฉลี่ย" : "Avg cost"}:{" "}
+                    <span className="font-semibold text-slate-700">
+                      {detail.currency === "THB" ? "฿" : "$"}
+                      {fmt(positionMetrics.avgCost)}
+                    </span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 items-center gap-4">
+                  <span className="col-span-1 tabular-nums">
+                    {locale === "th" ? "มูลค่าต้นทุน" : "Cost basis"}:{" "}
+                    <span className="font-semibold text-slate-700">
+                      {detail.currency === "THB" ? "฿" : "$"}
+                      {fmt(positionMetrics.costBasis)}
+                    </span>
+                  </span>
+                  <span className="col-span-1 tabular-nums">
+                    {locale === "th" ? "มูลค่าล่าสุด" : "Latest vs cost"}:{" "}
+                    <span
+                      className={cn(
+                        "font-semibold",
+                        positionMetrics.priceDiffPercent >= 0
+                          ? "text-emerald-600"
+                          : "text-red-500",
+                      )}
+                    >
+                      {positionMetrics.priceDiffPercent >= 0 ? "+" : ""}
+                      {fmt(Math.abs(positionMetrics.priceDiffPercent))}%
+                    </span>
+                  </span>
+                </div>
                 <span
                   className={cn(
-                    "font-semibold",
-                    positionMetrics.priceDiffPercent >= 0
+                    "tabular-nums font-semibold",
+                    positionMetrics.unrealizedPnL >= 0
                       ? "text-emerald-600"
                       : "text-red-500",
                   )}
                 >
-                  {positionMetrics.priceDiffPercent >= 0 ? "+" : ""}
-                  {fmt(Math.abs(positionMetrics.priceDiffPercent))}%
+                  {locale === "th"
+                    ? "กำไร/ขาดทุนที่ยังไม่รับรู้"
+                    : "Unrealized P&L"}
+                  : {positionMetrics.unrealizedPnL >= 0 ? "+" : ""}
+                  {detail.currency === "THB" ? "฿" : "$"}
+                  {fmt(Math.abs(positionMetrics.unrealizedPnL))} (
+                  {positionMetrics.unrealizedPnLPercent >= 0 ? "+" : ""}
+                  {fmt(Math.abs(positionMetrics.unrealizedPnLPercent))}%)
                 </span>
-              </span>
+              </div>
             </div>
-            <span
-              className={cn(
-                "tabular-nums font-semibold",
-                positionMetrics.unrealizedPnL >= 0
-                  ? "text-emerald-600"
-                  : "text-red-500",
-              )}
-            >
-              {locale === "th"
-                ? "กำไร/ขาดทุนที่ยังไม่รับรู้"
-                : "Unrealized P&L"}
-              : {positionMetrics.unrealizedPnL >= 0 ? "+" : ""}
-              {detail.currency === "THB" ? "฿" : "$"}
-              {fmt(Math.abs(positionMetrics.unrealizedPnL))} (
-              {positionMetrics.unrealizedPnLPercent >= 0 ? "+" : ""}
-              {fmt(Math.abs(positionMetrics.unrealizedPnLPercent))}%)
-            </span>
+          )}
+
+          {/* ── Right: company info ──────────────────────────────────────── */}
+          <div className="space-y-5">
+            {/* General info */}
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+              <div className="flex items-center gap-2 px-4 py-3.5 border-b border-slate-100">
+                <Building2 size={14} className="text-slate-500" />
+                <h2 className="text-sm font-semibold text-slate-800">
+                  {locale === "th" ? "ข้อมูลทั่วไป" : t("stocks.overview")}
+                </h2>
+              </div>
+              <div className="divide-y divide-slate-50 text-xs">
+                {[
+                  {
+                    label: locale === "th" ? "ชื่อเต็ม" : "Full Name",
+                    value: detail.name,
+                  },
+                  { label: locale === "th" ? "ตัวย่อ" : "Symbol", value: sym },
+                  {
+                    label: locale === "th" ? "ตลาด" : "Exchange",
+                    value: detail.exchange,
+                  },
+                  {
+                    label: locale === "th" ? "ประเภทหลักทรัพย์" : "Type",
+                    value:
+                      QUOTE_TYPE_LABEL[detail.quoteType ?? ""] ??
+                      detail.quoteType,
+                  },
+                  {
+                    label: locale === "th" ? "สกุลเงิน" : "Currency",
+                    value: detail.currency,
+                  },
+                  {
+                    label: locale === "th" ? "ประเทศ" : "Country",
+                    value: detail.country,
+                  },
+                  {
+                    label: locale === "th" ? "อุตสาหกรรม" : "Industry",
+                    value: detail.industry,
+                  },
+                  {
+                    label: locale === "th" ? "กลุ่มธุรกิจ" : "Sector",
+                    value: detail.sector,
+                  },
+                ].map(({ label, value }) =>
+                  value ? (
+                    <div
+                      key={label}
+                      className="flex items-start justify-between px-4 py-2.5 gap-2"
+                    >
+                      <span className="text-slate-500 shrink-0">{label}</span>
+                      <span className="text-slate-800 font-medium text-right">
+                        {value}
+                      </span>
+                    </div>
+                  ) : null,
+                )}
+                {detail.employees && (
+                  <div className="flex items-center justify-between px-4 py-2.5">
+                    <span className="text-slate-500 flex items-center gap-1.5">
+                      <Users size={11} />{" "}
+                      {locale === "th" ? "พนักงาน" : "Employees"}
+                    </span>
+                    <span className="text-slate-800 font-medium">
+                      {formatInteger(detail.employees)}
+                    </span>
+                  </div>
+                )}
+                {detail.website && (
+                  <div className="flex items-center justify-between px-4 py-2.5">
+                    <span className="text-slate-500 flex items-center gap-1.5">
+                      <Globe size={11} />{" "}
+                      {locale === "th" ? "เว็บไซต์" : "Website"}
+                    </span>
+                    <a
+                      href={
+                        detail.website.startsWith("http")
+                          ? detail.website
+                          : `https://${detail.website}`
+                      }
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1"
+                    >
+                      {locale === "th" ? "เยี่ยมชม" : "Visit"}{" "}
+                      <ExternalLink size={10} />
+                    </a>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* About */}
+            {detail.description && (
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div className="px-4 py-3.5 border-b border-slate-100">
+                  <h2 className="text-sm font-semibold text-slate-800">
+                    {locale === "th" ? "เกี่ยวกับบริษัท" : "About"}
+                  </h2>
+                </div>
+                <div className="px-4 py-4">
+                  <p className="text-xs text-slate-600 leading-relaxed line-clamp-8">
+                    {detail.description}
+                  </p>
+                </div>
+              </div>
+            )}
+
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
+                {locale === "th" ? "ซื้อ/ขาย" : "Trade"}
+              </p>
+              <p className="text-[10px] text-slate-500 tabular-nums">
+                {locale === "th" ? "เงินสด" : "Cash"}:{" "}
+                <span className="font-semibold text-slate-700">
+                  THB {formatCurrency(cashBalances?.THB ?? 0)} • USD{" "}
+                  {formatCurrency(cashBalances?.USD ?? 0)}
+                </span>
+              </p>
+            </div>
+
+            {/* Side toggle + mode selector (desktop/tablet) */}
+            <div className="mt-2 space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="flex items-center rounded-xl border border-slate-200 bg-white p-1">
+                  <button
+                    onClick={() => setTradeSide("BUY")}
+                    className={cn(
+                      "h-8 px-3 rounded-lg text-xs font-semibold transition-colors",
+                      tradeSide === "BUY"
+                        ? "bg-indigo-600 text-white"
+                        : "text-slate-600 hover:bg-slate-50",
+                    )}
+                  >
+                    {locale === "th" ? "ซื้อ" : "Buy"}
+                  </button>
+                  {holdingForSymbol && (
+                    <button
+                      onClick={() => setTradeSide("SELL")}
+                      className={cn(
+                        "h-8 px-3 rounded-lg text-xs font-semibold transition-colors",
+                        tradeSide === "SELL"
+                          ? "bg-red-600 text-white"
+                          : "text-slate-600 hover:bg-slate-50",
+                      )}
+                    >
+                      {locale === "th" ? "ขาย" : "Sell"}
+                    </button>
+                  )}
+                </div>
+
+                <select
+                  value={activeMode}
+                  onChange={(e) => {
+                    const v = e.target.value as TradeMode;
+                    if (tradeSide === "BUY") setBuyMode(v);
+                    else setSellMode(v);
+                  }}
+                  className="h-9 flex-1 rounded-xl border border-slate-200 bg-white px-2 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  title="Trade mode"
+                >
+                  <option value="THB">{getModeLabel("THB")}</option>
+                  <option value="USD">{getModeLabel("USD")}</option>
+                  <option value="SHARES">{getModeLabel("SHARES")}</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min={1}
+                  step={activeMode === "SHARES" ? 1 : 10}
+                  value={tradeInput}
+                  onChange={(e) => setTradeInput(Number(e.target.value))}
+                  className="h-9 w-32 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  aria-label="Trade input"
+                />
+                <div className="flex-1">
+                  <button
+                    onClick={() => {
+                      if (tradeSide === "BUY") openConfirm("BUY");
+                      else openConfirm("SELL");
+                      if (!isMobile()) {
+                        if (tradeSide === "BUY") void executeBuy();
+                        else void executeSell();
+                      }
+                    }}
+                    disabled={tradeBusy || (tradeSide === "SELL" && !holdingForSymbol)}
+                    className={cn(
+                      "h-9 w-full rounded-xl text-xs font-semibold text-white transition-colors",
+                      tradeBusy
+                        ? "bg-slate-300 cursor-not-allowed"
+                        : tradeSide === "BUY"
+                          ? "bg-indigo-600 hover:bg-indigo-500"
+                          : "bg-red-600 hover:bg-red-500",
+                    )}
+                  >
+                    {tradeSide === "BUY"
+                      ? locale === "th"
+                        ? "ยืนยันซื้อ"
+                        : "Confirm buy"
+                      : locale === "th"
+                        ? "ยืนยันขาย"
+                        : "Confirm sell"}
+                  </button>
+                </div>
+              </div>
+
+              <p className="text-[11px] text-slate-500">
+                {getInputLabel(tradeSide, activeMode)} •{" "}
+                <span className="font-semibold text-slate-700 tabular-nums">
+                  {locale === "th" ? "ประมาณ" : "Est."}{" "}
+                  {getQtyFromInput(tradeSide).toLocaleString()}{" "}
+                  {locale === "th" ? "หุ้น" : "shares"}
+                </span>
+              </p>
+            </div>
+
+            {holdingForSymbol && (
+              <p className="mt-2 text-[11px] text-slate-500 tabular-nums text-right">
+                {locale === "th" ? "มีอยู่" : "Holding"}:{" "}
+                <span className="font-semibold text-slate-700">
+                  {holdingForSymbol.quantity.toLocaleString()}
+                </span>
+              </p>
+            )}
           </div>
         </div>
-      )}
+      </div>
 
       {/* ── Two-column layout ──────────────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
@@ -745,119 +1323,12 @@ export default function StockDetailPage({
           </div>
         </div>
 
-        {/* ── Right: company info ──────────────────────────────────────── */}
-        <div className="space-y-5">
-          {/* General info */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="flex items-center gap-2 px-4 py-3.5 border-b border-slate-100">
-              <Building2 size={14} className="text-slate-500" />
-              <h2 className="text-sm font-semibold text-slate-800">
-                {locale === "th" ? "ข้อมูลทั่วไป" : t("stocks.overview")}
-              </h2>
-            </div>
-            <div className="divide-y divide-slate-50 text-xs">
-              {[
-                {
-                  label: locale === "th" ? "ชื่อเต็ม" : "Full Name",
-                  value: detail.name,
-                },
-                { label: locale === "th" ? "ตัวย่อ" : "Symbol", value: sym },
-                {
-                  label: locale === "th" ? "ตลาด" : "Exchange",
-                  value: detail.exchange,
-                },
-                {
-                  label: locale === "th" ? "ประเภทหลักทรัพย์" : "Type",
-                  value:
-                    QUOTE_TYPE_LABEL[detail.quoteType ?? ""] ??
-                    detail.quoteType,
-                },
-                {
-                  label: locale === "th" ? "สกุลเงิน" : "Currency",
-                  value: detail.currency,
-                },
-                {
-                  label: locale === "th" ? "ประเทศ" : "Country",
-                  value: detail.country,
-                },
-                {
-                  label: locale === "th" ? "อุตสาหกรรม" : "Industry",
-                  value: detail.industry,
-                },
-                {
-                  label: locale === "th" ? "กลุ่มธุรกิจ" : "Sector",
-                  value: detail.sector,
-                },
-              ].map(({ label, value }) =>
-                value ? (
-                  <div
-                    key={label}
-                    className="flex items-start justify-between px-4 py-2.5 gap-2"
-                  >
-                    <span className="text-slate-500 shrink-0">{label}</span>
-                    <span className="text-slate-800 font-medium text-right">
-                      {value}
-                    </span>
-                  </div>
-                ) : null,
-              )}
-              {detail.employees && (
-                <div className="flex items-center justify-between px-4 py-2.5">
-                  <span className="text-slate-500 flex items-center gap-1.5">
-                    <Users size={11} />{" "}
-                    {locale === "th" ? "พนักงาน" : "Employees"}
-                  </span>
-                  <span className="text-slate-800 font-medium">
-                    {formatInteger(detail.employees)}
-                  </span>
-                </div>
-              )}
-              {detail.website && (
-                <div className="flex items-center justify-between px-4 py-2.5">
-                  <span className="text-slate-500 flex items-center gap-1.5">
-                    <Globe size={11} />{" "}
-                    {locale === "th" ? "เว็บไซต์" : "Website"}
-                  </span>
-                  <a
-                    href={
-                      detail.website.startsWith("http")
-                        ? detail.website
-                        : `https://${detail.website}`
-                    }
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1"
-                  >
-                    {locale === "th" ? "เยี่ยมชม" : "Visit"}{" "}
-                    <ExternalLink size={10} />
-                  </a>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* About */}
-          {detail.description && (
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-              <div className="px-4 py-3.5 border-b border-slate-100">
-                <h2 className="text-sm font-semibold text-slate-800">
-                  {locale === "th" ? "เกี่ยวกับบริษัท" : "About"}
-                </h2>
-              </div>
-              <div className="px-4 py-4">
-                <p className="text-xs text-slate-600 leading-relaxed line-clamp-8">
-                  {detail.description}
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
       </div>
 
       {/* Recent News */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-4 py-3.5 border-b border-slate-100 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-slate-800">
+      <div className="overflow-hidden mt-8">
+        <div className="border-b border-slate-100 flex items-center justify-between">
+          <h2 className="text-sm mb-4 font-semibold text-slate-800">
             {locale === "th" ? "ข่าวล่าสุด" : "Recent News"}
           </h2>
           {news.length > 0 && (
@@ -875,7 +1346,7 @@ export default function StockDetailPage({
               : "No related news found"}
           </p>
         ) : (
-          <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {news.slice(0, 6).map((n) => (
               <NewsCard key={n.id} item={n} locale={locale} variant="stock" />
             ))}

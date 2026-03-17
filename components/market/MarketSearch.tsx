@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { Search, ExternalLink } from "lucide-react";
 import { cn } from "@/src/utils/helpers";
 import { useTranslations } from "@/src/i18n/useTranslations";
+import { useAppDispatch } from "@/src/store/hooks";
+import { fetchMarketSearch } from "@/src/slices/marketSlice";
 
 interface SearchResult {
   symbol:   string;
@@ -30,6 +32,7 @@ export function MarketSearch({
   variant = "desktop",
 }: MarketSearchProps) {
   const router = useRouter();
+  const dispatch = useAppDispatch();
   const { t, locale } = useTranslations();
 
   const [open, setOpen] = useState(false);
@@ -47,20 +50,12 @@ export function MarketSearch({
     }
 
     setLoading(true);
-    try {
-      const res = await fetch(`/api/market/search?q=${encodeURIComponent(trimmed)}`);
-      if (res.ok) {
-        const data = await res.json();
-        setResults(data.results ?? []);
-      } else {
-        setResults([]);
-      }
-    } catch {
-      setResults([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    dispatch(fetchMarketSearch({ q: trimmed }))
+      .unwrap()
+      .then((r) => setResults((r.results as SearchResult[]) ?? []))
+      .catch(() => setResults([]))
+      .finally(() => setLoading(false));
+  }, [dispatch]);
 
   function handleChange(next: string) {
     onValueChange(next);

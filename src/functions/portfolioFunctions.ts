@@ -1,11 +1,12 @@
-import type { Holding, PortfolioSummary, AllocationData } from "@/src/types";
+import type { Holding, PortfolioSummary, AllocationData, CashBalances } from "@/src/types";
 import { getSectorColor } from "@/src/utils/helpers";
 
 // ─── Portfolio Calculations ───────────────────────────────────────────────────
 
 export function calculatePortfolioSummary(
   holdings: Holding[],
-  cashBalance: number,
+  cashBalances: CashBalances,
+  fxUsdThb: number,
   previousDayValue?: number
 ): PortfolioSummary {
   const totalValue = holdings.reduce((sum, h) => sum + h.marketValue, 0);
@@ -24,7 +25,8 @@ export function calculatePortfolioSummary(
     totalPnLPercent,
     dailyPnL,
     dailyPnLPercent,
-    cashBalance,
+    cashBalances,
+    fxUsdThb,
   };
 }
 

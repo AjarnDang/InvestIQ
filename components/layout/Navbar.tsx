@@ -28,6 +28,7 @@ import { MAIN_NAV_ITEMS, PROFILE_NAV_ITEMS } from "@/src/data/navigation";
 import { timeAgo } from "@/src/utils/formatters";
 import { useTranslations } from "@/src/i18n/useTranslations";
 import { locales, localeNames, localeFlags, type Locale } from "@/src/i18n/config";
+import { fetchMarketSearch } from "@/src/slices/marketSlice";
 
 interface SearchResult {
   symbol:   string;
@@ -107,18 +108,12 @@ export function Navbar() {
       return;
     }
     setSearching(true);
-    try {
-      const res = await fetch(`/api/market/search?q=${encodeURIComponent(q.trim())}`);
-      if (res.ok) {
-        const data = await res.json();
-        setSearchResults(data.results ?? []);
-      }
-    } catch {
-      setSearchResults([]);
-    } finally {
-      setSearching(false);
-    }
-  }, []);
+    dispatch(fetchMarketSearch({ q: q.trim() }))
+      .unwrap()
+      .then((r) => setSearchResults((r.results as SearchResult[]) ?? []))
+      .catch(() => setSearchResults([]))
+      .finally(() => setSearching(false));
+  }, [dispatch]);
 
   function handleSearchChange(val: string) {
     setSearchQuery(val);
