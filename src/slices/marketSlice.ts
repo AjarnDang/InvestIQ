@@ -12,6 +12,7 @@ import type {
   MarketSearchResult,
   FearGreedData,
   StockDetail,
+  StockAnalysis,
 } from "@/src/types";
 import { initialMarketState } from "@/src/state/initialState";
 
@@ -176,6 +177,21 @@ export const fetchStockDetail = createAsyncThunk(
   },
 );
 
+/** Fetch analyst price targets + recommendation consensus from Yahoo Finance */
+export const fetchStockAnalysis = createAsyncThunk(
+  "market/fetchStockAnalysis",
+  async ({ symbol }: { symbol: string }, { rejectWithValue }) => {
+    try {
+      const res = await fetch(`/api/market/analysis/${encodeURIComponent(symbol)}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = (await res.json()) as { analysis?: StockAnalysis };
+      return data.analysis ?? null;
+    } catch (err) {
+      return rejectWithValue((err as Error).message);
+    }
+  },
+);
+
 // ─── Slice ────────────────────────────────────────────────────────────────────
 
 const marketSlice = createSlice({
@@ -295,6 +311,20 @@ const marketSlice = createSlice({
       })
       .addCase(fetchTrendingStocks.rejected, (state) => {
         state.loadingTrending = false;
+      });
+
+    // ── fetchStockAnalysis ───────────────────────────────────────────────────
+    builder
+      .addCase(fetchStockAnalysis.pending, (state) => {
+        state.loadingAnalysis = true;
+        state.stockAnalysis   = null;
+      })
+      .addCase(fetchStockAnalysis.fulfilled, (state, action) => {
+        state.loadingAnalysis = false;
+        state.stockAnalysis   = action.payload;
+      })
+      .addCase(fetchStockAnalysis.rejected, (state) => {
+        state.loadingAnalysis = false;
       });
   },
 });

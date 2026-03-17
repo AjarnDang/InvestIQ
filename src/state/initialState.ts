@@ -50,6 +50,8 @@ export const initialMarketState: MarketState = {
   loadingGlobal: true,    // skeletons for US indices
   loadingNews: true,      // skeletons for news feed
   loadingTrending: true,  // skeletons for hot stocks
+  stockAnalysis: null,
+  loadingAnalysis: false,
   error: null,
 };
 

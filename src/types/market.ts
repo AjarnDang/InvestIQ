@@ -125,6 +125,33 @@ export interface StockDetail {
   employees?: number;
 }
 
+export interface AnalystRecommendation {
+  period: string;
+  strongBuy: number;
+  buy: number;
+  hold: number;
+  sell: number;
+  strongSell: number;
+}
+
+export interface StockAnalysis {
+  symbol: string;
+  recommendationKey: string | null;
+  recommendationMean: number | null;
+  numberOfAnalysts: number | null;
+  targetMeanPrice: number | null;
+  targetHighPrice: number | null;
+  targetLowPrice: number | null;
+  targetMedianPrice: number | null;
+  currentPrice: number | null;
+  recommendationTrend: AnalystRecommendation[];
+  revenueGrowth: number | null;
+  earningsGrowth: number | null;
+  returnOnEquity: number | null;
+  debtToEquity: number | null;
+  currentRatio: number | null;
+}
+
 export interface MarketState {
   stocks: Stock[];
   indices: MarketIndex[];
@@ -137,6 +164,8 @@ export interface MarketState {
   loadingGlobal: boolean;
   loadingNews: boolean;
   loadingTrending: boolean;
+  stockAnalysis: StockAnalysis | null;
+  loadingAnalysis: boolean;
   error: string | null;
 }
 

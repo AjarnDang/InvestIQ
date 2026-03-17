@@ -6,6 +6,8 @@ import {
   TrendingUp,
   TrendingDown,
   ArrowUpRight,
+  Search,
+  X,
 } from "lucide-react";
 import { IndexBanner } from "@/components/ui/IndexBanner";
 import { useAppSelector, useAppDispatch } from "@/src/store/hooks";
@@ -17,7 +19,7 @@ import { cn, getChangeBgColor, getChangeColor } from "@/src/utils/helpers";
 import { useTranslations } from "@/src/i18n/useTranslations";
 import { MarketSearch } from "@/components/market/MarketSearch";
 import { StockScreenerTable } from "@/components/market/StockScreenerTable";
-import { fetchAssetQuotes } from "@/src/slices/marketSlice";
+import { fetchAssetQuotes, fetchTrendingStocks } from "@/src/slices/marketSlice";
 import { SYMBOL_TO_META } from "@/src/data/sectorMap";
 
 const ASSET_TABS = [
@@ -35,12 +37,15 @@ export default function MarketPage() {
   const fxUsdThb = useAppSelector((s) => s.portfolio.summary.fxUsdThb) ?? 35;
   const { stocks, indices, globalIndices, loading, loadingGlobal } =
     useAppSelector((s) => s.market);
+  const trendingStocks = useAppSelector((s) => s.market.trendingStocks);
+  const loadingTrending = useAppSelector((s) => s.market.loadingTrending);
 
   const [activeAsset, setActiveAsset] = useState<(typeof ASSET_TABS)[number]["key"]>("us");
   const [assetStocks, setAssetStocks] = useState<Stock[]>([]);
   const [assetLoading, setAssetLoading] = useState(false);
 
   const [search, setSearch] = useState("");
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
 
   const { gainers, losers } = useMemo(
     () => getGainersAndLosers(assetStocks.length ? assetStocks : stocks),
@@ -83,6 +88,12 @@ export default function MarketPage() {
       cancelled = true;
     };
   }, [activeAsset, dispatch]);
+
+  useEffect(() => {
+    if (!mobileSearchOpen) return;
+    // Load popular stocks for the full-screen search modal
+    if (trendingStocks.length === 0) dispatch(fetchTrendingStocks());
+  }, [mobileSearchOpen, trendingStocks.length, dispatch]);
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -240,7 +251,7 @@ export default function MarketPage() {
             ))}
           </div>
 
-          <div className="flex-1 min-w-[220px]">
+          <div className="hidden sm:block flex-1 min-w-[220px]">
             <MarketSearch
               value={search}
               onValueChange={setSearch}
@@ -266,6 +277,116 @@ export default function MarketPage() {
               : "Switch asset tabs to avoid rate-limit constraints"}
           </p>
         </div>
+      </div>
+
+      {/* Mobile: fixed search button + full-screen search modal */}
+      <div className="sm:hidden">
+        <button
+          type="button"
+          onClick={() => setMobileSearchOpen(true)}
+          className="fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-full bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-600/20"
+        >
+          <Search size={16} />
+          {locale === "th" ? "ค้นหาหุ้น" : "Search"}
+        </button>
+
+        {mobileSearchOpen && (
+          <div className="fixed inset-0 z-50 bg-white">
+            <div className="flex items-center justify-between gap-3 px-4 py-4 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <Search size={16} className="text-slate-400" />
+                <p className="text-sm font-semibold text-slate-800">
+                  {locale === "th" ? "ค้นหาหุ้น" : "Stock Search"}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMobileSearchOpen(false)}
+                className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-600"
+                aria-label="Close search"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="p-4">
+              <MarketSearch
+                value={search}
+                onValueChange={setSearch}
+                onSelectSymbol={(sym) => {
+                  setMobileSearchOpen(false);
+                  goToDetail(sym);
+                }}
+                variant="mobile"
+              />
+              <p className="mt-3 text-xs text-slate-500">
+                {locale === "th"
+                  ? "พิมพ์ชื่อหุ้นหรือตัวย่อเพื่อค้นหา"
+                  : "Type a symbol or name to search"}
+              </p>
+
+              {/* Popular / most searched (powered by Today's Hot Stocks) */}
+              <div className="mt-5">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold text-slate-800">
+                    {locale === "th" ? "หุ้นยอดนิยม" : "Popular stocks"}
+                  </p>
+                </div>
+
+                {loadingTrending && trendingStocks.length === 0 ? (
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    {Array.from({ length: 6 }).map((_, i) => (
+                      <div
+                        key={i}
+                        className="rounded-2xl border border-slate-200 bg-white p-3 animate-pulse"
+                      >
+                        <div className="h-3 w-16 bg-slate-200 rounded" />
+                        <div className="h-3 w-24 bg-slate-100 rounded mt-2" />
+                      </div>
+                    ))}
+                  </div>
+                ) : trendingStocks.length === 0 ? (
+                  <p className="mt-2 text-xs text-slate-400">
+                    {locale === "th" ? "ยังไม่มีข้อมูลหุ้นยอดนิยม" : "No popular stocks available"}
+                  </p>
+                ) : (
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    {trendingStocks.slice(0, 8).map((s) => (
+                      <button
+                        key={s.symbol}
+                        type="button"
+                        onClick={() => {
+                          setMobileSearchOpen(false);
+                          goToDetail(s.symbol);
+                        }}
+                        className="rounded-2xl border border-slate-200 bg-white p-3 text-left hover:bg-slate-50 transition-colors"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-sm font-bold text-slate-900 truncate">
+                              {s.symbol}
+                            </p>
+                            <p className="text-[11px] text-slate-500 truncate">
+                              {s.name}
+                            </p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-sm font-semibold text-slate-800 tabular-nums">
+                              ${Number(s.price ?? 0).toFixed(2)}
+                            </p>
+                            <p className="text-[10px] text-slate-400 tabular-nums">
+                              1 USD ≈ {fxUsdThb.toFixed(2)} THB
+                            </p>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Stock Screener Table ─────────────────────────────────────────── */}
