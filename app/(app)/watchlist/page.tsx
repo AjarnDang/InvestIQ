@@ -28,13 +28,24 @@ import { formatDate } from "@/src/utils/formatters";
 import { getChangeColor, getChangeBgColor, cn } from "@/src/utils/helpers";
 import { useTranslations } from "@/src/i18n/useTranslations";
 import { StockScreenerTable } from "@/components/market/StockScreenerTable";
+import { SYMBOL_TO_META } from "@/src/data/sectorMap";
 
 export default function WatchlistPage() {
   const router   = useRouter();
   const dispatch = useAppDispatch();
   const { t, locale } = useTranslations();
+  const fxUsdThb = useAppSelector((s) => s.portfolio.summary.fxUsdThb) ?? 35;
   const { items } = useAppSelector((s) => s.watchlist);
   const allStocks = useAppSelector((s) => s.market.stocks);
+
+  function isUsSymbol(symbol: string) {
+    const exch = (SYMBOL_TO_META[symbol]?.exchange ?? "").toUpperCase();
+    return exch !== "SET" && symbol.toUpperCase() in SYMBOL_TO_META;
+  }
+
+  function currencyPrefix(symbol: string) {
+    return isUsSymbol(symbol) ? "$" : "฿";
+  }
 
   const [editAlert, setEditAlert] = useState<string | null>(null);
   const [alertInput, setAlertInput] = useState("");
@@ -128,7 +139,15 @@ export default function WatchlistPage() {
                       <p className="text-xs text-slate-500 truncate">{s.name}</p>
                     </div>
                     <div className="text-right shrink-0 ml-4">
-                      <p className="text-sm font-medium text-slate-700">฿{s.price.toFixed(2)}</p>
+                      <p className="text-sm font-medium text-slate-700">
+                        {currencyPrefix(s.symbol)}
+                        {s.price.toFixed(2)}
+                      </p>
+                      {isUsSymbol(s.symbol) && (
+                        <p className="text-[10px] text-slate-400 tabular-nums">
+                          1 USD ≈ {fxUsdThb.toFixed(2)} THB
+                        </p>
+                      )}
                       <span className={cn("text-xs font-semibold", getChangeColor(s.changePercent))}>
                         {s.changePercent >= 0 ? "+" : ""}{s.changePercent.toFixed(2)}%
                       </span>
@@ -190,7 +209,19 @@ export default function WatchlistPage() {
               align: "right",
               sortable: true,
               sortValue: (r) => r.price,
-              render: (r) => <span className="font-semibold text-slate-800">฿{r.price.toFixed(2)}</span>,
+              render: (r) => (
+                <div className="text-right">
+                  <span className="font-semibold text-slate-800">
+                    {currencyPrefix(r.symbol)}
+                    {r.price.toFixed(2)}
+                  </span>
+                  {isUsSymbol(r.symbol) && (
+                    <p className="text-[10px] text-slate-400 tabular-nums">
+                      1 USD ≈ {fxUsdThb.toFixed(2)} THB
+                    </p>
+                  )}
+                </div>
+              ),
             },
             {
               key: "changePercent",
@@ -334,7 +365,15 @@ export default function WatchlistPage() {
                   <p className="mt-1 text-xs text-slate-500 truncate">{r.name}</p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-xl font-bold text-slate-900 leading-none">฿{r.price.toFixed(2)}</p>
+                  <p className="text-xl font-bold text-slate-900 leading-none">
+                    {currencyPrefix(r.symbol)}
+                    {r.price.toFixed(2)}
+                  </p>
+                  {isUsSymbol(r.symbol) && (
+                    <p className="text-[10px] text-slate-400 tabular-nums mt-0.5">
+                      1 USD ≈ {fxUsdThb.toFixed(2)} THB
+                    </p>
+                  )}
                   <p className="text-xs text-slate-400 mt-1">{formatDate(r.addedAt)}</p>
                 </div>
               </div>

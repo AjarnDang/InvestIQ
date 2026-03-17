@@ -716,6 +716,11 @@ export default function StockDetailPage({
                         {detail.currency === "THB" ? "฿" : "$"}
                         {fmt(detail.price)}
                       </p>
+                    {detail.currency === "USD" && (
+                      <p className="text-[10px] text-slate-400 tabular-nums">
+                        1 USD ≈ {(fxUsdThb ?? 35).toFixed(2)} THB
+                      </p>
+                    )}
                       <div
                         className={cn(
                           "flex items-center justify-start gap-1 text-sm font-bold tabular-nums",
@@ -945,7 +950,7 @@ export default function StockDetailPage({
         <div className="mt-2 w-full max-w-full space-y-5">
           {positionMetrics && (
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden p-4">
-              <div className="hidden sm:block text-sm text-slate-500 space-y-2">
+              <div className="block text-sm text-slate-500 space-y-2">
                 {holdingForSymbol && (
                   <span
                     className={cn(

@@ -52,9 +52,9 @@ export default function DashboardPage() {
   const [viewMode, setViewMode] = useState<ViewMode>("sector");
   const [activeAsset, setActiveAsset] = useState<AssetTabKey>("all");
 
-  const cashThbEq =
-    (summary.cashBalances?.THB ?? 0) +
-    (summary.cashBalances?.USD ?? 0) * (summary.fxUsdThb ?? 35);
+  const cashThb = summary.cashBalances?.THB ?? 0;
+  const cashUsd = summary.cashBalances?.USD ?? 0;
+  const fxUsdThb = summary.fxUsdThb ?? 35;
 
   const summaryRef = useRef<HTMLDivElement | null>(null);
   const [showLeft, setShowLeft] = useState(false);
@@ -71,6 +71,12 @@ export default function DashboardPage() {
     const exch = (meta?.exchange ?? "").toUpperCase();
     if (exch === "SET") return "th";
     return "us";
+  }
+
+  function isUsSymbol(symbol: string) {
+    const meta = SYMBOL_TO_META[symbol];
+    const exch = (meta?.exchange ?? "").toUpperCase();
+    return exch !== "SET" && symbol.toUpperCase() in SYMBOL_TO_META;
   }
 
   const filteredHoldings = useMemo(() => {
@@ -251,11 +257,22 @@ export default function DashboardPage() {
           </div>
           <div className="shrink-0 flex flex-col rounded-xl border border-slate-200 bg-white p-5 shadow-sm min-w-[100px] cursor-pointer hover:border-indigo-300 hover:shadow-md transition-all group">
             <StatCard
-              title={locale === "th" ? "เงินสด" : "Cash Balance"}
-              value={formatCurrency(cashThbEq)}
+              title={locale === "th" ? "เงินสด (THB)" : "Cash (THB)"}
+              value={formatCurrency(cashThb)}
               icon={<Wallet size={16} className="text-amber-600" />}
               iconBg="bg-amber-50"
             />
+          </div>
+          <div className="shrink-0 flex flex-col rounded-xl border border-slate-200 bg-white p-5 shadow-sm min-w-[120px] cursor-pointer hover:border-indigo-300 hover:shadow-md transition-all group">
+            <StatCard
+              title={locale === "th" ? "เงินสด (USD)" : "Cash (USD)"}
+              value={`$${cashUsd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+              icon={<Wallet size={16} className="text-indigo-600" />}
+              iconBg="bg-indigo-50"
+            />
+            <p className="mt-1 text-[10px] text-slate-400 tabular-nums">
+              1 USD ≈ {fxUsdThb.toLocaleString("en-US", { maximumFractionDigits: 4 })} THB
+            </p>
           </div>
         </div>
 
@@ -580,7 +597,19 @@ export default function DashboardPage() {
                 align: "right",
                 sortable: true,
                 sortValue: (r) => r.avgCost,
-                render: (r) => `฿${r.avgCost.toFixed(2)}`,
+                render: (r) => (
+                  <div className="text-right">
+                    <div className="text-slate-800 font-semibold">
+                      {isUsSymbol(r.symbol) ? "$" : "฿"}
+                      {r.avgCost.toFixed(2)}
+                    </div>
+                    {isUsSymbol(r.symbol) && (
+                      <div className="text-[10px] text-slate-400 tabular-nums">
+                        1 USD ≈ {fxUsdThb.toFixed(2)} THB
+                      </div>
+                    )}
+                  </div>
+                ),
               },
               {
                 key: "price",
@@ -588,7 +617,19 @@ export default function DashboardPage() {
                 align: "right",
                 sortable: true,
                 sortValue: (r) => r.currentPrice,
-                render: (r) => `฿${r.currentPrice.toFixed(2)}`,
+                render: (r) => (
+                  <div className="text-right">
+                    <div className="text-slate-800 font-semibold">
+                      {isUsSymbol(r.symbol) ? "$" : "฿"}
+                      {r.currentPrice.toFixed(2)}
+                    </div>
+                    {isUsSymbol(r.symbol) && (
+                      <div className="text-[10px] text-slate-400 tabular-nums">
+                        1 USD ≈ {fxUsdThb.toFixed(2)} THB
+                      </div>
+                    )}
+                  </div>
+                ),
               },
               {
                 key: "marketValue",
@@ -654,11 +695,27 @@ export default function DashboardPage() {
                     </div>
                     <div>
                       <p className="text-slate-400">{t("dashboard.avgCost")}</p>
-                      <p className="font-medium text-slate-700">฿{h.avgCost.toFixed(2)}</p>
+                      <p className="font-medium text-slate-700">
+                        {isUsSymbol(h.symbol) ? "$" : "฿"}
+                        {h.avgCost.toFixed(2)}
+                      </p>
+                      {isUsSymbol(h.symbol) && (
+                        <p className="text-[10px] text-slate-400 tabular-nums mt-0.5">
+                          1 USD ≈ {fxUsdThb.toFixed(2)} THB
+                        </p>
+                      )}
                     </div>
                     <div>
                       <p className="text-slate-400">{t("common.price")}</p>
-                      <p className="font-medium text-slate-700">฿{h.currentPrice.toFixed(2)}</p>
+                      <p className="font-medium text-slate-700">
+                        {isUsSymbol(h.symbol) ? "$" : "฿"}
+                        {h.currentPrice.toFixed(2)}
+                      </p>
+                      {isUsSymbol(h.symbol) && (
+                        <p className="text-[10px] text-slate-400 tabular-nums mt-0.5">
+                          1 USD ≈ {fxUsdThb.toFixed(2)} THB
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>

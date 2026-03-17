@@ -18,6 +18,7 @@ import { useTranslations } from "@/src/i18n/useTranslations";
 import { MarketSearch } from "@/components/market/MarketSearch";
 import { StockScreenerTable } from "@/components/market/StockScreenerTable";
 import { fetchAssetQuotes } from "@/src/slices/marketSlice";
+import { SYMBOL_TO_META } from "@/src/data/sectorMap";
 
 const ASSET_TABS = [
   { key: "us", labelTH: "หุ้นสหรัฐฯ", labelEN: "US Stocks" },
@@ -31,6 +32,7 @@ export default function MarketPage() {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const { t, locale } = useTranslations();
+  const fxUsdThb = useAppSelector((s) => s.portfolio.summary.fxUsdThb) ?? 35;
   const { stocks, indices, globalIndices, loading, loadingGlobal } =
     useAppSelector((s) => s.market);
 
@@ -47,13 +49,25 @@ export default function MarketPage() {
 
   const visibleStocks = assetStocks.length ? assetStocks : stocks;
 
+  function isUsSymbol(symbol: string) {
+    const exch = (SYMBOL_TO_META[symbol]?.exchange ?? "").toUpperCase();
+    return exch !== "SET" && symbol.toUpperCase() in SYMBOL_TO_META;
+  }
+
+  function getCurrencyPrefix(symbol: string) {
+    return isUsSymbol(symbol) ? "$" : "฿";
+  }
+
   function goToDetail(symbol: string) {
     router.push(`/stocks/${symbol.toUpperCase()}`);
   }
 
   useEffect(() => {
     let cancelled = false;
-    setAssetLoading(true);
+    // Schedule state updates to avoid sync setState-in-effect warnings.
+    queueMicrotask(() => {
+      if (!cancelled) setAssetLoading(true);
+    });
     dispatch(fetchAssetQuotes({ asset: activeAsset, limit: 30 }))
       .unwrap()
       .then((r) => {
@@ -68,7 +82,7 @@ export default function MarketPage() {
     return () => {
       cancelled = true;
     };
-  }, [activeAsset]);
+  }, [activeAsset, dispatch]);
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -134,8 +148,14 @@ export default function MarketPage() {
                 <div className="text-right shrink-0 flex items-center gap-2">
                   <div>
                     <p className="text-sm font-semibold text-slate-700">
-                      ฿{s.price.toFixed(2)}
+                      {getCurrencyPrefix(s.symbol)}
+                      {s.price.toFixed(2)}
                     </p>
+                    {isUsSymbol(s.symbol) && (
+                      <p className="text-[10px] text-slate-400 tabular-nums">
+                        1 USD ≈ {fxUsdThb.toFixed(2)} THB
+                      </p>
+                    )}
                     <span className="text-xs font-medium text-emerald-600">
                       +{s.changePercent.toFixed(2)}%
                     </span>
@@ -177,8 +197,14 @@ export default function MarketPage() {
                 <div className="text-right shrink-0 flex items-center gap-2">
                   <div>
                     <p className="text-sm font-semibold text-slate-700">
-                      ฿{s.price.toFixed(2)}
+                      {getCurrencyPrefix(s.symbol)}
+                      {s.price.toFixed(2)}
                     </p>
+                    {isUsSymbol(s.symbol) && (
+                      <p className="text-[10px] text-slate-400 tabular-nums">
+                        1 USD ≈ {fxUsdThb.toFixed(2)} THB
+                      </p>
+                    )}
                     <span className="text-xs font-medium text-red-600">
                       {s.changePercent.toFixed(2)}%
                     </span>
@@ -289,7 +315,17 @@ export default function MarketPage() {
             sortable: true,
             sortValue: (r) => r.price,
             render: (r) => (
-              <span className="font-semibold text-slate-700">{r.price.toFixed(2)}</span>
+              <div className="text-right">
+                <div className="font-semibold text-slate-800">
+                  {getCurrencyPrefix(r.symbol)}
+                  {r.price.toFixed(2)}
+                </div>
+                {isUsSymbol(r.symbol) && (
+                  <div className="text-[10px] text-slate-400 tabular-nums">
+                    1 USD ≈ {fxUsdThb.toFixed(2)} THB
+                  </div>
+                )}
+              </div>
             ),
           },
           {
@@ -382,7 +418,15 @@ export default function MarketPage() {
             </div>
             <div className="text-right shrink-0 ml-3 flex items-center gap-2">
               <div>
-                <p className="font-semibold text-slate-800">{r.price.toFixed(2)}</p>
+                <p className="font-semibold text-slate-800">
+                  {getCurrencyPrefix(r.symbol)}
+                  {r.price.toFixed(2)}
+                </p>
+                {isUsSymbol(r.symbol) && (
+                  <p className="text-[10px] text-slate-400 tabular-nums">
+                    1 USD ≈ {fxUsdThb.toFixed(2)} THB
+                  </p>
+                )}
                 <p className="text-xs text-slate-500">Vol: {formatVolume(r.volume)}</p>
               </div>
               <ArrowUpRight

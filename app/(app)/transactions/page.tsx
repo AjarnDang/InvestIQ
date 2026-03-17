@@ -13,13 +13,21 @@ import { formatCurrency, formatDate } from "@/src/utils/formatters";
 import { TRANSACTION_TYPE_CONFIG, STATUS_CONFIG, cn } from "@/src/utils/helpers";
 import { ProfileTabsBar } from "@/components/layout/ProfileTabsBar";
 import { useTranslations } from "@/src/i18n/useTranslations";
+import { SYMBOL_TO_META } from "@/src/data/sectorMap";
 
 export default function TransactionsPage() {
   const router   = useRouter();
   const dispatch = useAppDispatch();
   const { t, locale } = useTranslations();
   const { transactions, filter } = useAppSelector((s) => s.transactions);
+  const fxUsdThb = useAppSelector((s) => s.portfolio.summary.fxUsdThb) ?? 35;
   const [showFilters, setShowFilters] = React.useState(false);
+
+  function isUsSymbol(symbol: string | undefined) {
+    if (!symbol) return false;
+    const exch = (SYMBOL_TO_META[symbol]?.exchange ?? "").toUpperCase();
+    return exch !== "SET" && symbol.toUpperCase() in SYMBOL_TO_META;
+  }
 
   const TYPE_OPTIONS: Array<{ value: TransactionType | "ALL"; label: string }> = [
     { value: "ALL",      label: t("transactions.allTypes")  },
@@ -209,7 +217,7 @@ export default function TransactionsPage() {
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className={cn("inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-semibold flex-shrink-0", cfg.color)}>
+                        <span className={cn("inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-semibold shrink-0", cfg.color)}>
                           {cfg.label}
                         </span>
                         <div className="min-w-0">
@@ -222,7 +230,7 @@ export default function TransactionsPage() {
                           <p className="text-xs text-slate-500">{formatDate(txn.date)}</p>
                         </div>
                       </div>
-                      <div className="text-right flex-shrink-0">
+                      <div className="text-right shrink-0">
                         <p className={cn("text-sm font-bold", cfg.sign > 0 ? "text-emerald-600" : "text-red-600")}>
                           {cfg.sign > 0 ? "+" : "-"}{formatCurrency(txn.amount)}
                         </p>
@@ -306,7 +314,21 @@ export default function TransactionsPage() {
                           {txn.quantity ? txn.quantity.toLocaleString() : "—"}
                         </td>
                         <td className="px-4 py-3 text-right text-slate-600">
-                          {txn.price ? `฿${txn.price.toFixed(2)}` : "—"}
+                          {txn.price ? (
+                            <div className="text-right">
+                              <div className="text-slate-600">
+                                {isUsSymbol(txn.symbol) ? "$" : "฿"}
+                                {txn.price.toFixed(2)}
+                              </div>
+                              {isUsSymbol(txn.symbol) && (
+                                <div className="text-[10px] text-slate-400 tabular-nums">
+                                  1 USD ≈ {fxUsdThb.toFixed(2)} THB
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            "—"
+                          )}
                         </td>
                         <td className={cn("px-4 py-3 text-right font-semibold", cfg.sign > 0 ? "text-emerald-600" : "text-red-600")}>
                           {cfg.sign > 0 ? "+" : "-"}{formatCurrency(txn.amount)}
