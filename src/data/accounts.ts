@@ -29,6 +29,17 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
       joinDate: "2023-06-20",
     },
   },
+  {
+    email: "investor@investiq.com",
+    password: "invest1234",
+    user: {
+      id: "user_003",
+      name: "Narin S.",
+      email: "investor@investiq.com",
+      accountNumber: "IQ-2026-003",
+      joinDate: "2025-09-03",
+    },
+  },
 ];
 
 /** Convenience: first demo account credentials shown in login UI */

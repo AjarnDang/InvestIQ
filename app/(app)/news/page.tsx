@@ -23,6 +23,7 @@ import { NewsCard } from "@/components/ui/NewsCard";
 import { useRouter } from "next/navigation";
 import { getChangeBgColor, getChangeColor } from "@/src/utils/helpers";
 import type { MarketIndex, TrendingStock } from "@/src/types";
+import { NewsSearch } from "@/components/news/NewsSearch";
 
 const ALL_SOURCES = ["All", "MarketWatch", "CNBC", "Reuters", "Bangkok Post"];
 
@@ -42,6 +43,7 @@ export default function NewsPage() {
   } = useAppSelector((s) => s.market);
   const [activeSource, setActiveSource] = useState("All");
   const [page, setPage] = useState(1);
+  const [newsQuery, setNewsQuery] = useState("");
   const PAGE_SIZE = 24;
 
   const filtered = useMemo(
@@ -99,20 +101,31 @@ export default function NewsPage() {
               : "Latest financial news from global markets"}
           </p>
         </div>
-        <button
-          onClick={() => dispatch(fetchMarketNews())}
-          disabled={loadingNews}
-          className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50"
-        >
-          <RefreshCw size={12} className={loadingNews ? "animate-spin" : ""} />
-          {locale === "th" ? "รีเฟรช" : "Refresh"}
-        </button>
       </div>
 
       {/* ── Layout: Left (news) 2/3, Right (sidebar) 1/3 ────────────────── */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Left: News list + pagination */}
         <div className="space-y-4 xl:col-span-2">
+
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="flex-1 sm:w-72">
+            <NewsSearch
+              value={newsQuery}
+              onValueChange={setNewsQuery}
+              variant="desktop"
+            />
+          </div>
+          <button
+            onClick={() => dispatch(fetchMarketNews())}
+            disabled={loadingNews}
+            className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50 shrink-0"
+          >
+            <RefreshCw size={12} className={loadingNews ? "animate-spin" : ""} />
+            {locale === "th" ? "รีเฟรช" : "Refresh"}
+          </button>
+        </div>
+        
           {/* Source Filter tabs */}
           <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide pb-1">
             <Filter size={13} className="text-slate-400 shrink-0" />
