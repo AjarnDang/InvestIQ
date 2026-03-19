@@ -599,6 +599,7 @@ export default function StockDetailPage({
   const router = useRouter();
   const dispatch = useAppDispatch();
   const watchlistItems = useAppSelector((s) => s.watchlist.items);
+  const { isAuthenticated } = useAppSelector((s) => s.auth);
 
   const [detail, setDetail] = useState<StockDetail | null>(null);
   const [history, setHistory] = useState<PriceHistory[]>([]);
@@ -729,6 +730,17 @@ export default function StockDetailPage({
   }
 
   async function executeBuy() {
+    if (!isAuthenticated) {
+      openModal(
+        "info",
+        locale === "th" ? "กรุณาเข้าสู่ระบบ" : "Login required",
+        locale === "th"
+          ? "เข้าสู่ระบบก่อนเพื่อใช้งานการซื้อ/ขายหุ้น"
+          : "Please sign in to use trading features.",
+      );
+      router.push("/login");
+      return;
+    }
     if (!detail?.price || tradeBusy) return;
     const qty = getQtyFromInput("BUY");
     const price = detail.price;
@@ -800,6 +812,17 @@ export default function StockDetailPage({
   }
 
   async function executeSell() {
+    if (!isAuthenticated) {
+      openModal(
+        "info",
+        locale === "th" ? "กรุณาเข้าสู่ระบบ" : "Login required",
+        locale === "th"
+          ? "เข้าสู่ระบบก่อนเพื่อใช้งานการซื้อ/ขายหุ้น"
+          : "Please sign in to use trading features.",
+      );
+      router.push("/login");
+      return;
+    }
     if (!detail?.price || tradeBusy || !holdingForSymbol) return;
     const qty = getQtyFromInput("SELL");
     if (qty > holdingForSymbol.quantity) {
@@ -864,7 +887,13 @@ export default function StockDetailPage({
   async function fetchHistory(rangeLabel: RangeLabel) {
     const opt = RANGE_OPTIONS.find((r) => r.label === rangeLabel)!;
     setHistLoading(true);
-    dispatch(fetchStockHistory({ symbol: sym, range: opt.range }))
+    dispatch(
+      fetchStockHistory({
+        symbol: sym,
+        range: opt.range,
+        interval: opt.interval,
+      }),
+    )
       .unwrap()
       .then((h) => setHistory(h ?? []))
       .catch(() => {
@@ -1462,7 +1491,10 @@ export default function StockDetailPage({
                 label="P/E Ratio"
                 value={detail.pe ? fmt(detail.pe) : "—"}
               />
-              <StatTile label="EPS" value={detail.eps ? fmt(detail.eps) : "—"} />
+              <StatTile
+                label="EPS"
+                value={detail.eps ? fmt(detail.eps) : "—"}
+              />
               <StatTile
                 label="52W High"
                 value={detail.high52 ? fmt(detail.high52) : "—"}
@@ -1485,7 +1517,10 @@ export default function StockDetailPage({
                 }
                 sub={locale === "th" ? "อัตราเงินปันผล" : "Yield"}
               />
-              <StatTile label={t("common.open")} value={detail.open ? fmt(detail.open) : "—"} />
+              <StatTile
+                label={t("common.open")}
+                value={detail.open ? fmt(detail.open) : "—"}
+              />
               <StatTile
                 label={t("market.prevClose")}
                 value={detail.prevClose ? fmt(detail.prevClose) : "—"}
@@ -1524,7 +1559,12 @@ export default function StockDetailPage({
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {news.slice(0, 6).map((n) => (
-                  <NewsCard key={n.id} item={n} locale={locale} variant="stock" />
+                  <NewsCard
+                    key={n.id}
+                    item={n}
+                    locale={locale}
+                    variant="stock"
+                  />
                 ))}
               </div>
             )}
@@ -1532,8 +1572,8 @@ export default function StockDetailPage({
         </div>
 
         {/* Right column: sticky across the whole page */}
-        <div className="w-full max-w-full space-y-5 xl:sticky xl:top-20 xl:self-start">
-          {positionMetrics && (
+        <div className="w-full max-w-full space-y-3 xl:sticky xl:top-16 xl:self-start">
+          {isAuthenticated && positionMetrics && (
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden p-4">
               <div className="block text-sm text-slate-500 space-y-2">
                 {holdingForSymbol && (
@@ -1719,158 +1759,192 @@ export default function StockDetailPage({
           </div>
           {/* Desktop trade panel */}
           <div className="hidden sm:block rounded-2xl border border-slate-200 bg-slate-50 p-3">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
-                {locale === "th" ? "ซื้อ/ขาย" : "Trade"}
-              </p>
-              <p className="text-[10px] text-slate-500 tabular-nums">
-                {locale === "th" ? "เงินสด" : "Cash"}:{" "}
-                <span className="font-semibold text-slate-700">
-                  THB {formatCurrency(cashBalances?.THB ?? 0)} • USD{" "}
-                  {formatCurrency(cashBalances?.USD ?? 0)}
-                </span>
-              </p>
-            </div>
-
-            {/* Side toggle + mode selector (desktop/tablet) */}
-            <div className="mt-2 space-y-2">
-              <div className="flex items-center gap-2">
-                <div className="flex items-center rounded-xl border border-slate-200 bg-white p-1">
-                  <button
-                    onClick={() => setTradeSide("BUY")}
-                    className={cn(
-                      "h-8 px-3 rounded-lg text-xs font-semibold transition-colors",
-                      tradeSide === "BUY"
-                        ? "bg-indigo-600 text-white"
-                        : "text-slate-600 hover:bg-slate-50",
-                    )}
-                  >
-                    {locale === "th" ? "ซื้อ" : "Buy"}
-                  </button>
-                  {holdingForSymbol && (
-                    <button
-                      onClick={() => setTradeSide("SELL")}
-                      className={cn(
-                        "h-8 px-3 rounded-lg text-xs font-semibold transition-colors",
-                        tradeSide === "SELL"
-                          ? "bg-red-600 text-white"
-                          : "text-slate-600 hover:bg-slate-50",
-                      )}
-                    >
-                      {locale === "th" ? "ขาย" : "Sell"}
-                    </button>
-                  )}
-                </div>
-
-                <select
-                  value={activeMode}
-                  onChange={(e) => {
-                    const v = e.target.value as TradeMode;
-                    if (tradeSide === "BUY") setBuyMode(v);
-                    else setSellMode(v);
-                  }}
-                  className="h-9 flex-1 rounded-xl border border-slate-200 bg-white px-2 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  title="Trade mode"
+            {!isAuthenticated ? (
+              <>
+                <p className="text-xs font-semibold text-slate-800">
+                  {locale === "th"
+                    ? "เข้าสู่ระบบเพื่อซื้อ/ขายหุ้น"
+                    : "Login to trade"}
+                </p>
+                <p className="mt-1 text-[11px] text-slate-500">
+                  {locale === "th"
+                    ? "ฟีเจอร์ซื้อ/ขาย และข้อมูลพอร์ต (position metrics) ใช้ได้หลังเข้าสู่ระบบเท่านั้น"
+                    : "Trading features and portfolio metrics are available after login."}
+                </p>
+                <button
+                  onClick={() => router.push("/login")}
+                  className="mt-3 h-9 w-full rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white transition-colors"
                 >
-                  <option value="THB">{getModeLabel("THB")}</option>
-                  <option value="USD">{getModeLabel("USD")}</option>
-                  <option value="SHARES">{getModeLabel("SHARES")}</option>
-                </select>
-              </div>
+                  {locale === "th" ? "เข้าสู่ระบบเพื่อซื้อ" : "Login to buy"}
+                </button>
+              </>
+            ) : (
+              <>
+                {/* Side toggle + mode selector (desktop/tablet) */}
+                <div className="mt-2 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
+                      {locale === "th" ? "ซื้อ/ขาย" : "Trade"}
+                    </p>
+                    <p className="text-[10px] text-slate-500 tabular-nums">
+                      {locale === "th" ? "เงินสด" : "Cash"}:{" "}
+                      <span className="font-semibold text-slate-700">
+                        THB {formatCurrency(cashBalances?.THB ?? 0)} • USD{" "}
+                        {formatCurrency(cashBalances?.USD ?? 0)}
+                      </span>
+                    </p>
+                  </div>
 
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  min={1}
-                  step={activeMode === "SHARES" ? 1 : 10}
-                  value={tradeInput}
-                  onChange={(e) => setTradeInput(Number(e.target.value))}
-                  className="h-9 w-32 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  aria-label="Trade input"
-                />
-                <div className="flex-1">
-                  <button
-                    onClick={() => {
-                      if (tradeSide === "BUY") openConfirm("BUY");
-                      else openConfirm("SELL");
-                      if (!isMobile()) {
-                        if (tradeSide === "BUY") void executeBuy();
-                        else void executeSell();
-                      }
-                    }}
-                    disabled={
-                      tradeBusy || (tradeSide === "SELL" && !holdingForSymbol)
-                    }
-                    className={cn(
-                      "h-9 w-full rounded-xl text-xs font-semibold text-white transition-colors",
-                      tradeBusy
-                        ? "bg-slate-300 cursor-not-allowed"
-                        : tradeSide === "BUY"
-                          ? "bg-indigo-600 hover:bg-indigo-500"
-                          : "bg-red-600 hover:bg-red-500",
-                    )}
-                  >
-                    {tradeSide === "BUY"
-                      ? locale === "th"
-                        ? "ยืนยันซื้อ"
-                        : "Confirm buy"
-                      : locale === "th"
-                        ? "ยืนยันขาย"
-                        : "Confirm sell"}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center rounded-xl border border-slate-200 bg-white p-1">
+                      <button
+                        onClick={() => setTradeSide("BUY")}
+                        className={cn(
+                          "h-8 px-3 rounded-lg text-xs font-semibold transition-colors",
+                          tradeSide === "BUY"
+                            ? "bg-indigo-600 text-white"
+                            : "text-slate-600 hover:bg-slate-50",
+                        )}
+                      >
+                        {locale === "th" ? "ซื้อ" : "Buy"}
+                      </button>
+                      {holdingForSymbol && (
+                        <button
+                          onClick={() => setTradeSide("SELL")}
+                          className={cn(
+                            "h-8 px-3 rounded-lg text-xs font-semibold transition-colors",
+                            tradeSide === "SELL"
+                              ? "bg-red-600 text-white"
+                              : "text-slate-600 hover:bg-slate-50",
+                          )}
+                        >
+                          {locale === "th" ? "ขาย" : "Sell"}
+                        </button>
+                      )}
+                    </div>
+
+                    <select
+                      value={activeMode}
+                      onChange={(e) => {
+                        const v = e.target.value as TradeMode;
+                        if (tradeSide === "BUY") setBuyMode(v);
+                        else setSellMode(v);
+                      }}
+                      className="h-9 flex-1 rounded-xl border border-slate-200 bg-white px-2 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      title="Trade mode"
+                    >
+                      <option value="THB">{getModeLabel("THB")}</option>
+                      <option value="USD">{getModeLabel("USD")}</option>
+                      <option value="SHARES">{getModeLabel("SHARES")}</option>
+                    </select>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min={1}
+                      step={activeMode === "SHARES" ? 1 : 10}
+                      value={tradeInput}
+                      onChange={(e) => setTradeInput(Number(e.target.value))}
+                      className="h-9 w-32 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      aria-label="Trade input"
+                    />
+                    <div className="flex-1">
+                      <button
+                        onClick={() => {
+                          if (tradeSide === "BUY") openConfirm("BUY");
+                          else openConfirm("SELL");
+                          if (!isMobile()) {
+                            if (tradeSide === "BUY") void executeBuy();
+                            else void executeSell();
+                          }
+                        }}
+                        disabled={
+                          tradeBusy ||
+                          (tradeSide === "SELL" && !holdingForSymbol)
+                        }
+                        className={cn(
+                          "h-9 w-full rounded-xl text-xs font-semibold text-white transition-colors",
+                          tradeBusy
+                            ? "bg-slate-300 cursor-not-allowed"
+                            : tradeSide === "BUY"
+                              ? "bg-indigo-600 hover:bg-indigo-500"
+                              : "bg-red-600 hover:bg-red-500",
+                        )}
+                      >
+                        {tradeSide === "BUY"
+                          ? locale === "th"
+                            ? "ยืนยันซื้อ"
+                            : "Confirm buy"
+                          : locale === "th"
+                            ? "ยืนยันขาย"
+                            : "Confirm sell"}
+                      </button>
+                    </div>
+                  </div>
+
+                  <p className="text-[11px] text-slate-500">
+                    {getInputLabel(tradeSide, activeMode)} •{" "}
+                    <span className="font-semibold text-slate-700 tabular-nums">
+                      {locale === "th" ? "ประมาณ" : "Est."}{" "}
+                      {getQtyFromInput(tradeSide).toLocaleString()}{" "}
+                      {locale === "th" ? "หุ้น" : "shares"}
+                    </span>
+                  </p>
                 </div>
-              </div>
 
-              <p className="text-[11px] text-slate-500">
-                {getInputLabel(tradeSide, activeMode)} •{" "}
-                <span className="font-semibold text-slate-700 tabular-nums">
-                  {locale === "th" ? "ประมาณ" : "Est."}{" "}
-                  {getQtyFromInput(tradeSide).toLocaleString()}{" "}
-                  {locale === "th" ? "หุ้น" : "shares"}
-                </span>
-              </p>
-            </div>
-
-            {holdingForSymbol && (
-              <p className="mt-2 text-[11px] text-slate-500 tabular-nums text-right">
-                {locale === "th" ? "มีอยู่" : "Holding"}:{" "}
-                <span className="font-semibold text-slate-700">
-                  {holdingForSymbol.quantity.toLocaleString()}
-                </span>
-              </p>
+                {holdingForSymbol && (
+                  <p className="mt-2 text-[11px] text-slate-500 tabular-nums text-right">
+                    {locale === "th" ? "มีอยู่" : "Holding"}:{" "}
+                    <span className="font-semibold text-slate-700">
+                      {holdingForSymbol.quantity.toLocaleString()}
+                    </span>
+                  </p>
+                )}
+              </>
             )}
           </div>
         </div>
+
       </div>
 
       {/* Mobile: fixed bottom buy/sell buttons only */}
       <div className="sm:hidden fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 backdrop-blur px-4 py-3">
-        <div className="flex items-center gap-2">
+        {!isAuthenticated ? (
           <button
-            onClick={() => openConfirm("BUY")}
-            disabled={tradeBusy}
-            className={cn(
-              "h-11 flex-1 rounded-2xl text-sm font-semibold text-white transition-colors",
-              tradeBusy
-                ? "bg-indigo-300 cursor-not-allowed"
-                : "bg-indigo-600 hover:bg-indigo-500",
-            )}
+            onClick={() => router.push("/login")}
+            className="h-11 w-full rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-sm font-semibold text-white transition-colors"
           >
-            {locale === "th" ? "ซื้อ" : "Buy"}
+            {locale === "th" ? "เข้าสู่ระบบเพื่อซื้อ" : "Login to buy"}
           </button>
-          <button
-            onClick={() => holdingForSymbol && openConfirm("SELL")}
-            disabled={tradeBusy || !holdingForSymbol}
-            className={cn(
-              "h-11 flex-1 rounded-2xl text-sm font-semibold transition-colors border",
-              tradeBusy || !holdingForSymbol
-                ? "bg-white text-slate-300 border-slate-200 cursor-not-allowed"
-                : "bg-white text-red-600 border-red-200 hover:bg-red-50",
-            )}
-          >
-            {locale === "th" ? "ขาย" : "Sell"}
-          </button>
-        </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => openConfirm("BUY")}
+              disabled={tradeBusy}
+              className={cn(
+                "h-11 flex-1 rounded-2xl text-sm font-semibold text-white transition-colors",
+                tradeBusy
+                  ? "bg-indigo-300 cursor-not-allowed"
+                  : "bg-indigo-600 hover:bg-indigo-500",
+              )}
+            >
+              {locale === "th" ? "ซื้อ" : "Buy"}
+            </button>
+            <button
+              onClick={() => holdingForSymbol && openConfirm("SELL")}
+              disabled={tradeBusy || !holdingForSymbol}
+              className={cn(
+                "h-11 flex-1 rounded-2xl text-sm font-semibold transition-colors border",
+                tradeBusy || !holdingForSymbol
+                  ? "bg-white text-slate-300 border-slate-200 cursor-not-allowed"
+                  : "bg-white text-red-600 border-red-200 hover:bg-red-50",
+              )}
+            >
+              {locale === "th" ? "ขาย" : "Sell"}
+            </button>
+          </div>
+        )}
         <div className="mt-2 flex items-center justify-between text-[10px] text-slate-500 tabular-nums">
           <span>
             {locale === "th" ? "เงินสด" : "Cash"}: THB{" "}

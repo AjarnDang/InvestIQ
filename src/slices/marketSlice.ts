@@ -149,11 +149,13 @@ export const fetchTrendingStocks = createAsyncThunk(
 export const fetchStockHistory = createAsyncThunk(
   "market/fetchStockHistory",
   async (
-    { symbol, range = "1mo" }: { symbol: string; range?: string },
+    { symbol, range = "1mo", interval = "1d" }: { symbol: string; range?: string; interval?: string },
     { rejectWithValue }
   ) => {
     try {
-      const res = await fetch(`/api/market/history?symbol=${symbol}&range=${range}&interval=1d`);
+      const res = await fetch(
+        `/api/market/history?symbol=${encodeURIComponent(symbol)}&range=${encodeURIComponent(range)}&interval=${encodeURIComponent(interval)}`,
+      );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json() as { symbol: string; history: PriceHistory[] };
       return data.history;

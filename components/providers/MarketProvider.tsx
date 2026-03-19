@@ -68,7 +68,7 @@ export function MarketProvider({ children }: { children: React.ReactNode }) {
   // Fetch price history whenever selected stock changes
   useEffect(() => {
     if (selectedStock) {
-      dispatch(fetchStockHistory({ symbol: selectedStock.symbol, range: "1mo" }));
+      dispatch(fetchStockHistory({ symbol: selectedStock.symbol, range: "1mo", interval: "1d" }));
     }
   }, [dispatch, selectedStock?.symbol]); // eslint-disable-line react-hooks/exhaustive-deps
 

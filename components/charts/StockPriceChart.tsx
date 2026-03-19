@@ -54,20 +54,32 @@ export function StockPriceChart({
   currency = "THB",
   intraday = false,
 }: Props) {
+  const safeData = useMemo(() => {
+    // Recharts treats string X values as categories; if intraday has duplicates
+    // (e.g., partial trading day) it can collapse into a single point.
+    // We enforce uniqueness by keeping the latest candle per label.
+    if (!intraday) return data;
+    const seen = new Map<string, PriceHistory>();
+    for (const p of data) seen.set(p.date, p);
+    return Array.from(seen.values());
+  }, [data, intraday]);
+
   const isPositive = useMemo(
-    () => data.length >= 2 && data[data.length - 1].close >= data[0].close,
-    [data],
+    () =>
+      safeData.length >= 2 &&
+      safeData[safeData.length - 1].close >= safeData[0].close,
+    [safeData],
   );
   const lineColor  = isPositive ? "#10b981" : "#ef4444";
   const gradientId = "stock-chart-gradient";
 
   // Decide how many ticks to show on X-axis
-  const tickCount = data.length;
+  const tickCount = safeData.length;
   const tickInterval = tickCount <= 20 ? 0 : Math.floor(tickCount / 6);
 
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <AreaChart data={data} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+      <AreaChart data={safeData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
         <defs>
           <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
             <stop offset="5%"  stopColor={lineColor} stopOpacity={0.18} />
@@ -115,7 +127,7 @@ export function StockPriceChart({
           fill={`url(#${gradientId})`}
           dot={false}
           activeDot={{ r: 4, strokeWidth: 0, fill: lineColor }}
-          isAnimationActive={data.length <= 200}
+          isAnimationActive={safeData.length <= 200}
         />
       </AreaChart>
     </ResponsiveContainer>
