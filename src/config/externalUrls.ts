@@ -11,12 +11,23 @@ type EnvKey =
   | "NEWS_RSS_REUTERS_URL"
   | "NEWS_RSS_BANGKOKPOST_URL";
 
-function requireEnv(key: EnvKey): string {
+const DEFAULT_URLS: Record<EnvKey, string> = {
+  YAHOO_QUERY1_BASE_URL: "https://query1.finance.yahoo.com",
+  YAHOO_QUERY2_BASE_URL: "https://query2.finance.yahoo.com",
+  YAHOO_FINANCE_ORIGIN: "https://finance.yahoo.com",
+  YAHOO_FINANCE_REFERER: "https://finance.yahoo.com/",
+  ALPHA_VANTAGE_BASE_URL: "https://www.alphavantage.co/query",
+  ALTERNATIVE_FNG_URL: "https://api.alternative.me/fng/?limit=400",
+  STOCKANALYSIS_BASE_URL: "https://stockanalysis.com",
+  NEWS_RSS_MARKETWATCH_URL: "https://feeds.marketwatch.com/marketwatch/topstories/",
+  NEWS_RSS_CNBC_URL: "https://www.cnbc.com/id/100003114/device/rss/rss.html",
+  NEWS_RSS_REUTERS_URL: "https://feeds.reuters.com/reuters/businessNews",
+  NEWS_RSS_BANGKOKPOST_URL: "https://www.bangkokpost.com/rss/data/business.xml",
+};
+
+function envOrDefault(key: EnvKey): string {
   const v = process.env[key];
-  if (!v || !v.trim()) {
-    throw new Error(`Missing required env: ${key}`);
-  }
-  return v.trim();
+  return (v && v.trim()) ? v.trim() : DEFAULT_URLS[key];
 }
 
 function joinUrl(base: string, path: string): string {
@@ -26,19 +37,19 @@ function joinUrl(base: string, path: string): string {
 }
 
 export const EXTERNAL_URLS = {
-  yahooQuery1Base: requireEnv("YAHOO_QUERY1_BASE_URL"),
-  yahooQuery2Base: requireEnv("YAHOO_QUERY2_BASE_URL"),
-  yahooFinanceOrigin: requireEnv("YAHOO_FINANCE_ORIGIN"),
-  yahooFinanceReferer: requireEnv("YAHOO_FINANCE_REFERER"),
+  yahooQuery1Base: envOrDefault("YAHOO_QUERY1_BASE_URL"),
+  yahooQuery2Base: envOrDefault("YAHOO_QUERY2_BASE_URL"),
+  yahooFinanceOrigin: envOrDefault("YAHOO_FINANCE_ORIGIN"),
+  yahooFinanceReferer: envOrDefault("YAHOO_FINANCE_REFERER"),
 
-  alphaVantageBase: requireEnv("ALPHA_VANTAGE_BASE_URL"),
-  alternativeFngUrl: requireEnv("ALTERNATIVE_FNG_URL"),
-  stockanalysisBase: requireEnv("STOCKANALYSIS_BASE_URL"),
+  alphaVantageBase: envOrDefault("ALPHA_VANTAGE_BASE_URL"),
+  alternativeFngUrl: envOrDefault("ALTERNATIVE_FNG_URL"),
+  stockanalysisBase: envOrDefault("STOCKANALYSIS_BASE_URL"),
 
-  newsRssMarketWatch: requireEnv("NEWS_RSS_MARKETWATCH_URL"),
-  newsRssCnbc: requireEnv("NEWS_RSS_CNBC_URL"),
-  newsRssReuters: requireEnv("NEWS_RSS_REUTERS_URL"),
-  newsRssBangkokPost: requireEnv("NEWS_RSS_BANGKOKPOST_URL"),
+  newsRssMarketWatch: envOrDefault("NEWS_RSS_MARKETWATCH_URL"),
+  newsRssCnbc: envOrDefault("NEWS_RSS_CNBC_URL"),
+  newsRssReuters: envOrDefault("NEWS_RSS_REUTERS_URL"),
+  newsRssBangkokPost: envOrDefault("NEWS_RSS_BANGKOKPOST_URL"),
 } as const;
 
 export function yahooChartUrl(
