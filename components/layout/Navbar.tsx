@@ -18,6 +18,7 @@ import {
 import { cn } from "@/src/utils/helpers";
 import { useAppDispatch, useAppSelector } from "@/src/store/hooks";
 import { logout } from "@/src/slices/authSlice";
+import { resetUserData } from "@/src/slices/userHydration";
 import {
   markAllNotificationsRead,
   markNotificationRead,
@@ -123,6 +124,7 @@ export function Navbar() {
 
   function handleLogout() {
     dispatch(logout());
+    dispatch(resetUserData());
     router.replace("/home");
     setShowProfile(false);
     setMobileOpen(false);

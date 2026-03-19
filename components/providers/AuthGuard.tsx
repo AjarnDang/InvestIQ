@@ -9,6 +9,7 @@ import { getAuthSession, getSessionRemainingMs } from "@/src/functions/authFunct
 import { TrendingUp, Lock, LogIn } from "lucide-react";
 import { PROFILE_NAV_ITEMS } from "@/src/data/navigation";
 import { useTranslations } from "@/src/i18n/useTranslations";
+import { hydrateUserData, resetUserData } from "@/src/slices/userHydration";
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -20,7 +21,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
   const pathname  = usePathname();
   const dispatch  = useAppDispatch();
   const { t, locale } = useTranslations();
-  const { isAuthenticated, initializing } = useAppSelector((s) => s.auth);
+  const { isAuthenticated, initializing, user } = useAppSelector((s) => s.auth);
 
   useEffect(() => {
     const session = getAuthSession();
@@ -31,6 +32,15 @@ export function AuthGuard({ children }: AuthGuardProps) {
     }
   }, [dispatch]);
 
+  // Hydrate per-user mock data whenever auth user changes.
+  useEffect(() => {
+    if (isAuthenticated && user?.id) {
+      dispatch(hydrateUserData(user.id));
+    } else if (!isAuthenticated && !initializing) {
+      dispatch(resetUserData());
+    }
+  }, [dispatch, isAuthenticated, initializing, user?.id]);
+
   // Auto-logout after 24 hours from login (checks on mount + schedules logout)
   useEffect(() => {
     const session = getAuthSession();
@@ -39,19 +49,26 @@ export function AuthGuard({ children }: AuthGuardProps) {
     const remaining = getSessionRemainingMs();
     if (remaining === 0) {
       dispatch(logout());
+      dispatch(resetUserData());
       return;
     }
 
     // Fallback polling (handles clock changes / multi-tab)
     const interval = setInterval(() => {
       const s = getAuthSession();
-      if (!s) dispatch(logout());
+      if (!s) {
+        dispatch(logout());
+        dispatch(resetUserData());
+      }
     }, 60_000);
 
     // Precise timeout when TTL elapses
     const timeout =
       typeof remaining === "number" && remaining > 0
-        ? setTimeout(() => dispatch(logout()), remaining)
+        ? setTimeout(() => {
+            dispatch(logout());
+            dispatch(resetUserData());
+          }, remaining)
         : null;
 
     return () => {

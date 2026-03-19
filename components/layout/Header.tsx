@@ -22,6 +22,7 @@ import {
 import { logout } from "@/src/slices/authSlice";
 import { timeAgo } from "@/src/utils/formatters";
 import { PAGE_TITLE_MAP } from "@/src/data/navigation";
+import { resetUserData } from "@/src/slices/userHydration";
 
 const PAGE_TITLES = PAGE_TITLE_MAP;
 
@@ -41,6 +42,7 @@ export function Header({ pathname }: HeaderProps) {
 
   const handleLogout = () => {
     dispatch(logout());
+    dispatch(resetUserData());
     router.replace("/home");
   };
 
