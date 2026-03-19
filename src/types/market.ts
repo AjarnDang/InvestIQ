@@ -62,6 +62,8 @@ export interface FearGreedData {
 
 export interface PriceHistory {
   date: string;
+  /** ISO timestamp (exchange-local), when available */
+  ts?: string;
   open: number;
   high: number;
   low: number;

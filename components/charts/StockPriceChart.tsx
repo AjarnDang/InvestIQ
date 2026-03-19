@@ -17,6 +17,7 @@ interface Props {
   height?: number;
   currency?: string;
   intraday?: boolean;
+  rangeLabel?: "1D" | "5D" | "1M" | "6M" | "YTD" | "1Y" | "5Y" | "MAX";
 }
 
 // Format a price for the Y-axis tick label
@@ -36,6 +37,51 @@ function fmtTooltipPrice(v: number, currency: string): string {
   })}`;
 }
 
+function fmtTooltipDate(
+  p: PriceHistory | undefined,
+  intraday: boolean,
+  showTime: boolean,
+): string {
+  if (!p) return "";
+
+  // Prefer real ISO timestamp if present (intraday path).
+  if (p.ts) {
+    // p.ts is exchange-local (no TZ suffix). Use as local for display consistency.
+    const d = new Date(p.ts);
+    if (!isNaN(d.getTime())) {
+      if (showTime) {
+        return d.toLocaleString("en-GB", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        });
+      }
+      return d.toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
+    }
+  }
+
+  if (!intraday) {
+    const d = new Date(p.date + "T00:00:00");
+    if (!isNaN(d.getTime())) {
+      return d.toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
+    }
+  }
+
+  // Fallback: whatever we have (HH:MM or YYYY-MM-DD)
+  return p.date;
+}
+
 // Format the date/time label on the X-axis
 // Intraday dates arrive as "HH:MM" — pass through as-is.
 // Daily dates arrive as "YYYY-MM-DD" — format as "d MMM" (e.g. "10 Mar").
@@ -53,6 +99,7 @@ export function StockPriceChart({
   height = 220,
   currency = "THB",
   intraday = false,
+  rangeLabel,
 }: Props) {
   const safeData = useMemo(() => {
     // Recharts treats string X values as categories; if intraday has duplicates
@@ -76,6 +123,7 @@ export function StockPriceChart({
   // Decide how many ticks to show on X-axis
   const tickCount = safeData.length;
   const tickInterval = tickCount <= 20 ? 0 : Math.floor(tickCount / 6);
+  const showTimeInTooltip = rangeLabel === "1D";
 
   return (
     <ResponsiveContainer width="100%" height={height}>
@@ -109,13 +157,22 @@ export function StockPriceChart({
         />
 
         <Tooltip
-          formatter={(value) => [fmtTooltipPrice(value as number, currency), "ราคา"]}
-          labelFormatter={(label) => fmtXLabel(String(label), intraday)}
-          contentStyle={{
-            borderRadius: "10px",
-            border: "1px solid #e2e8f0",
-            fontSize: "12px",
-            boxShadow: "0 4px 12px -2px rgb(0 0 0 / 0.1)",
+          content={({ active, payload }) => {
+            if (!active || !payload || payload.length === 0) return null;
+            const p = payload[0]?.payload as PriceHistory | undefined;
+            const title = fmtTooltipDate(p, intraday, showTimeInTooltip);
+            const price = p?.close;
+
+            return (
+              <div className="rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-lg">
+                <p className="text-[11px] font-semibold text-slate-600">
+                  {title}
+                </p>
+                <p className="text-sm font-bold text-slate-800">
+                  {fmtTooltipPrice(Number(price ?? 0), currency)}
+                </p>
+              </div>
+            );
           }}
         />
 

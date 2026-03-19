@@ -178,6 +178,7 @@ export function transformChartToPriceHistory(
 
     const ts = timestamps[i];
     let dateStr: string;
+    let isoTs: string | undefined;
 
     if (intraday) {
       // Shift to the exchange's local time and extract HH:MM
@@ -186,12 +187,19 @@ export function transformChartToPriceHistory(
       const hh = String(d.getUTCHours()).padStart(2, "0");
       const mm = String(d.getUTCMinutes()).padStart(2, "0");
       dateStr = `${hh}:${mm}`;
+      // Represent exchange-local time as ISO-like string (no timezone offset)
+      const yyyy = String(d.getUTCFullYear());
+      const mo = String(d.getUTCMonth() + 1).padStart(2, "0");
+      const dd = String(d.getUTCDate()).padStart(2, "0");
+      const ss = String(d.getUTCSeconds()).padStart(2, "0");
+      isoTs = `${yyyy}-${mo}-${dd}T${hh}:${mm}:${ss}`;
     } else {
       dateStr = new Date(ts * 1000).toISOString().split("T")[0];
     }
 
     history.push({
       date:   dateStr,
+      ts:     isoTs,
       open:   round2(open),
       high:   round2(high),
       low:    round2(low),

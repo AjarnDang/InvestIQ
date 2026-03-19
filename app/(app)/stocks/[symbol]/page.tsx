@@ -1388,6 +1388,7 @@ export default function StockDetailPage({
                         height={220}
                         currency={detail.currency ?? "THB"}
                         intraday={isIntraday}
+                        rangeLabel={activeRange}
                       />
                     ) : (
                       <div
