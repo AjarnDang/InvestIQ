@@ -26,7 +26,7 @@ export const MAIN_NAV_ITEMS: NavItem[] = [
 
 // ── Profile nav — authenticated users only (shown in profile dropdown) ────
 export const PROFILE_NAV_ITEMS: NavItem[] = [
-  { href: "/dashboard",    label: "Portfolio",    icon: PieChart,       translationKey: "auth.portfolio"    },
+  { href: "/portfolio",    label: "Portfolio",    icon: PieChart,       translationKey: "auth.portfolio"    },
   { href: "/transactions", label: "Transactions", icon: ArrowLeftRight, translationKey: "auth.transactions" },
   { href: "/watchlist",    label: "Watchlist",    icon: Star,           translationKey: "auth.watchlist"    },
   { href: "/settings",     label: "Settings",     icon: Settings,       translationKey: "auth.settings"     },
@@ -37,7 +37,7 @@ export const BOTTOM_NAV_ITEMS: NavItem[] = [
   { href: "/home",      label: "Home",      icon: Home,     translationKey: "nav.home"          },
   { href: "/market",    label: "Market",    icon: BarChart2, translationKey: "nav.market"        },
   { href: "/news",      label: "News",      icon: Newspaper, translationKey: "nav.news"          },
-  { href: "/dashboard", label: "Portfolio", icon: PieChart,  translationKey: "auth.portfolio"    },
+  { href: "/portfolio", label: "Portfolio", icon: PieChart,  translationKey: "auth.portfolio"    },
   { href: "/settings",  label: "Settings",  icon: Settings,  translationKey: "auth.settings"     },
 ];
 
@@ -51,7 +51,7 @@ export const PAGE_TITLE_MAP: Record<string, string> = {
   "/plans":        "แผนการลงทุน",
   "/services":     "บริการ",
   "/about":        "เกี่ยวกับเรา",
-  "/dashboard":    "Portfolio",
+  "/portfolio":    "Portfolio",
   "/transactions": "Transactions",
   "/watchlist":    "Watchlist",
   "/settings":     "Settings",

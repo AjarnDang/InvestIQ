@@ -16,7 +16,6 @@ import {
 } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "@/src/store/hooks";
 import { loginThunk, clearAuthError } from "@/src/slices/authSlice";
-import { getAuthSession } from "@/src/functions/authFunctions";
 import {
   LOGIN_FEATURE_LIST_EN,
   LOGIN_FEATURE_LIST_TH,
@@ -41,10 +40,6 @@ export default function LoginPage() {
     email?: string;
     password?: string;
   }>({});
-
-  useEffect(() => {
-    if (getAuthSession()) router.replace("/home");
-  }, [router]);
 
   useEffect(() => {
     if (isAuthenticated) router.replace("/home");

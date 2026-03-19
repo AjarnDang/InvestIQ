@@ -797,10 +797,10 @@ export default function HomePage() {
                 <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0">
                   {isAuthenticated ? (
                     <Link
-                      href="/dashboard"
+                      href="/portfolio"
                       className="flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 px-6 py-3 text-sm font-bold text-white transition-colors"
                     >
-                      <LayoutDashboard size={15} /> {locale === "th" ? "ไปที่ Dashboard" : t("auth.dashboard")}
+                      <LayoutDashboard size={15} /> {locale === "th" ? "ไปที่พอร์ต" : t("auth.portfolio")}
                     </Link>
                   ) : (
                     <>

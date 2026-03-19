@@ -11,7 +11,7 @@ export default function RootPage() {
   useEffect(() => {
     const session = getAuthSession();
     if (session) {
-      router.replace("/dashboard");
+      router.replace("/portfolio");
     } else {
       router.replace("/home");
     }

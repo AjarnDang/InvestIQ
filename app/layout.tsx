@@ -4,6 +4,7 @@ import "./globals.css";
 import { ReduxProvider } from "@/components/providers/ReduxProvider";
 import { MarketProvider } from "@/components/providers/MarketProvider";
 import { LocaleProvider } from "@/components/providers/LocaleProvider";
+import { AuthGuard } from "@/components/providers/AuthGuard";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -40,7 +41,9 @@ export default function RootLayout({
       >
         <ReduxProvider>
           <LocaleProvider>
-            <MarketProvider>{children}</MarketProvider>
+            <AuthGuard>
+              <MarketProvider>{children}</MarketProvider>
+            </AuthGuard>
           </LocaleProvider>
         </ReduxProvider>
       </body>
