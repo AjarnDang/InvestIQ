@@ -87,6 +87,37 @@ export function generatePriceHistory(
   return history;
 }
 
+// ─── Range P&L (from history) ────────────────────────────────────────────────
+
+/**
+ * Computes absolute + percent change over the provided history window.
+ * Uses the earliest close as the base and the latest close as the end.
+ */
+export function calculateRangeChange(
+  history: PriceHistory[],
+): { change: number; changePercent: number } | null {
+  if (!Array.isArray(history) || history.length < 2) return null;
+
+  const sorted = [...history].sort((a, b) => {
+    const at = a.ts ? Date.parse(a.ts) : NaN;
+    const bt = b.ts ? Date.parse(b.ts) : NaN;
+    if (Number.isFinite(at) && Number.isFinite(bt)) return at - bt;
+    // Fallback: keep input order when timestamps are unavailable.
+    return 0;
+  });
+
+  const first = sorted[0]?.close;
+  const last = sorted[sorted.length - 1]?.close;
+  if (!Number.isFinite(first) || !Number.isFinite(last)) return null;
+
+  const change = last - first;
+  const changePercent = first !== 0 ? (change / first) * 100 : 0;
+  return {
+    change: Math.round(change * 100) / 100,
+    changePercent: Math.round(changePercent * 100) / 100,
+  };
+}
+
 // ─── Market Summary Stats ─────────────────────────────────────────────────────
 
 export function getMarketStats(stocks: Stock[]) {

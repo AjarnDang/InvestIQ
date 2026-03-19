@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, use } from "react";
+import React, { useEffect, useState, useMemo, use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -52,6 +52,7 @@ import {
   fetchFxUsdThb,
 } from "@/src/slices/portfolioSlice";
 import { generateId } from "@/src/utils/helpers";
+import { calculateRangeChange } from "@/src/functions/marketFunctions";
 
 // ── Range selector ─────────────────────────────────────────────────────────
 const RANGE_OPTIONS = [
@@ -630,6 +631,8 @@ export default function StockDetailPage({
       detail?.price ?? null,
     );
 
+  const rangeChange = useMemo(() => calculateRangeChange(history), [history]);
+
   type TradeSide = "BUY" | "SELL";
   type TradeMode = "THB" | "USD" | "SHARES";
 
@@ -1202,7 +1205,7 @@ export default function StockDetailPage({
                             1 USD ≈ {(fxUsdThb ?? 35).toFixed(2)} THB
                           </p>
                         )}
-                        <div
+                        {/* <div
                           className={cn(
                             "flex items-center justify-start gap-1 text-sm font-bold tabular-nums",
                             positive ? "text-emerald-600" : "text-red-500",
@@ -1216,7 +1219,23 @@ export default function StockDetailPage({
                           {positive ? "+" : ""}
                           {fmt(detail.change)} ({positive ? "+" : ""}
                           {fmt(detail.changePercent)}%)
-                        </div>
+                        </div> */}
+                        {rangeChange && (
+                          <span
+                            className={cn(
+                              "text-xs font-bold tabular-nums",
+                              rangeChange.changePercent >= 0
+                                ? "text-emerald-600"
+                                : "text-red-500",
+                            )}
+                          >
+                            {rangeChange.changePercent >= 0 ? "+" : "-"}
+                            {detail.currency === "USD" ? "$" : "฿"}
+                            {fmt(Math.abs(rangeChange.change), 2)} (
+                            {rangeChange.changePercent >= 0 ? "+" : "-"}
+                            {fmt(Math.abs(rangeChange.changePercent), 2)}%)
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -1349,6 +1368,7 @@ export default function StockDetailPage({
                       <h2 className="text-sm font-semibold text-slate-800">
                         {t("stocks.chart")}
                       </h2>
+
                       {histLoading && (
                         <RefreshCw
                           size={11}
@@ -1906,7 +1926,6 @@ export default function StockDetailPage({
             )}
           </div>
         </div>
-
       </div>
 
       {/* Mobile: fixed bottom buy/sell buttons only */}

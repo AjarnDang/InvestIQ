@@ -104,12 +104,23 @@ export function StockPriceChart({
   const safeData = useMemo(() => {
     // Recharts treats string X values as categories; if intraday has duplicates
     // (e.g., partial trading day) it can collapse into a single point.
-    // We enforce uniqueness by keeping the latest candle per label.
+    // We enforce uniqueness by keying on a full timestamp when available.
     if (!intraday) return data;
     const seen = new Map<string, PriceHistory>();
-    for (const p of data) seen.set(p.date, p);
+    for (const p of data) {
+      const key = p.ts ?? p.date; // ts is unique across multi-day intraday ranges
+      seen.set(key, p);
+    }
     return Array.from(seen.values());
   }, [data, intraday]);
+
+  const chartData = useMemo(() => {
+    // Use a stable X key so multi-day intraday (5D) doesn't collapse.
+    return safeData.map((p) => ({
+      ...p,
+      x: intraday ? (p.ts ?? p.date) : p.date,
+    }));
+  }, [safeData, intraday]);
 
   const isPositive = useMemo(
     () =>
@@ -127,7 +138,7 @@ export function StockPriceChart({
 
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <AreaChart data={safeData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+      <AreaChart data={chartData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
         <defs>
           <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
             <stop offset="5%"  stopColor={lineColor} stopOpacity={0.18} />
@@ -138,8 +149,19 @@ export function StockPriceChart({
         <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
 
         <XAxis
-          dataKey="date"
-          tickFormatter={(tick) => fmtXLabel(tick, intraday)}
+          dataKey="x"
+          tickFormatter={(tick) => {
+            const s = String(tick);
+            if (intraday && s.includes("T")) {
+              const d = new Date(s);
+              if (!isNaN(d.getTime())) {
+                const hh = String(d.getHours()).padStart(2, "0");
+                const mm = String(d.getMinutes()).padStart(2, "0");
+                return `${hh}:${mm}`;
+              }
+            }
+            return fmtXLabel(s, intraday);
+          }}
           tick={{ fontSize: 10, fill: "#94a3b8" }}
           tickLine={false}
           axisLine={false}
