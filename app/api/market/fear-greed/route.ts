@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
+import { EXTERNAL_URLS } from "@/src/config/externalUrls";
 
 /**
  * Fear & Greed Index from Alternative.me (crypto market sentiment).
  * CNN-style stock market Fear & Greed is proprietary; this provides a real 0–100
  * sentiment API with historical data. Same scale: 0 = Extreme Fear, 100 = Extreme Greed.
  */
-const FNG_URL = "https://api.alternative.me/fng/?limit=400";
+const FNG_URL = EXTERNAL_URLS.alternativeFngUrl;
 
 type FngItem = {
   value: string;

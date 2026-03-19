@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { TrendingStock } from "@/src/types";
+import { EXTERNAL_URLS, yahooChartUrl } from "@/src/config/externalUrls";
 
 /**
  * Curated list of popular US stocks (CNN Business / market-buzz style).
@@ -27,8 +28,8 @@ const YAHOO_HEADERS = {
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
   Accept: "application/json, text/plain, */*",
   "Accept-Language": "en-US,en;q=0.9",
-  Referer: "https://finance.yahoo.com/",
-  Origin: "https://finance.yahoo.com",
+  Referer: EXTERNAL_URLS.yahooFinanceReferer,
+  Origin: EXTERNAL_URLS.yahooFinanceOrigin,
 };
 
 function round2(n: number) {
@@ -40,7 +41,12 @@ async function fetchQuote(
   name: string,
   sector: string
 ): Promise<TrendingStock | null> {
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=2d&lang=en&region=US`;
+  const url = yahooChartUrl(symbol, {
+    interval: "1d",
+    range: "2d",
+    lang: "en",
+    region: "US",
+  });
   try {
     const res = await fetch(url, {
       headers: YAHOO_HEADERS,

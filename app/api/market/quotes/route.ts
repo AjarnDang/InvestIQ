@@ -7,6 +7,7 @@ import {
 } from "@/src/data/sectorMap";
 import type { Stock, MarketIndex } from "@/src/types";
 import { transformQuotesToIndices } from "@/src/functions/yahooTransform";
+import { EXTERNAL_URLS, yahooChartUrl, yahooV7QuoteUrl } from "@/src/config/externalUrls";
 
 // ─── Shared Yahoo headers ────────────────────────────────────────────────────
 // Identical to /api/market/trending — keeps bot-detection profiles consistent.
@@ -15,8 +16,8 @@ const YAHOO_HEADERS = {
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
   Accept: "application/json, text/plain, */*",
   "Accept-Language": "en-US,en;q=0.9",
-  Referer: "https://finance.yahoo.com/",
-  Origin: "https://finance.yahoo.com",
+  Referer: EXTERNAL_URLS.yahooFinanceReferer,
+  Origin: EXTERNAL_URLS.yahooFinanceOrigin,
 };
 
 // ─── Per-symbol chart endpoint (same as /api/market/trending) ────────────────
@@ -30,9 +31,12 @@ async function fetchYahooChartQuote(yahooSymbol: string): Promise<{
   high52w: number;
   low52w: number;
 } | null> {
-  const url =
-    `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}` +
-    `?interval=1d&range=2d&lang=en&region=US`;
+  const url = yahooChartUrl(encodeURIComponent(yahooSymbol), {
+    interval: "1d",
+    range: "2d",
+    lang: "en",
+    region: "US",
+  });
   try {
     const res = await fetch(url, {
       headers: YAHOO_HEADERS,
@@ -81,9 +85,12 @@ const YAHOO_V7_FIELDS = [
 ].join(",");
 
 async function fetchYahooV7Bulk(symbols: string) {
-  const url =
-    `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(symbols)}` +
-    `&fields=${YAHOO_V7_FIELDS}&lang=en&region=US`;
+  const url = yahooV7QuoteUrl({
+    symbols: encodeURIComponent(symbols),
+    fields: YAHOO_V7_FIELDS,
+    lang: "en",
+    region: "US",
+  });
   const res = await fetch(url, {
     headers: { ...YAHOO_HEADERS, Accept: "application/json" },
     next: { revalidate: 60 },

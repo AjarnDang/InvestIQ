@@ -3,6 +3,7 @@ import { transformChartToPriceHistory } from "@/src/functions/yahooTransform";
 import { SYMBOL_TO_META } from "@/src/data/sectorMap";
 import { generatePriceHistory } from "@/src/functions/marketFunctions";
 import { MOCK_STOCKS } from "@/src/data/stocks";
+import { yahooChartUrl } from "@/src/config/externalUrls";
 
 const YAHOO_HEADERS = {
   "User-Agent":
@@ -33,7 +34,12 @@ export async function GET(req: NextRequest) {
 
   try {
     const encoded = encodeURIComponent(yahooTicker);
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encoded}?interval=${interval}&range=${range}&lang=en&region=TH`;
+    const url = yahooChartUrl(encoded, {
+      interval,
+      range,
+      lang: "en",
+      region: "TH",
+    });
 
     const res = await fetch(url, {
       headers: YAHOO_HEADERS,

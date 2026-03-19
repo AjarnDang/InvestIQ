@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SYMBOL_TO_META } from "@/src/data/sectorMap";
 import { resolveAliasToYahoo } from "@/src/data/indexAliases";
+import { EXTERNAL_URLS, yahooV10QuoteSummaryUrl } from "@/src/config/externalUrls";
 
 export const revalidate = 300;
 
@@ -9,8 +10,8 @@ const YAHOO_HEADERS = {
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
   Accept: "application/json, text/plain, */*",
   "Accept-Language": "en-US,en;q=0.9",
-  Referer: "https://finance.yahoo.com/",
-  Origin: "https://finance.yahoo.com",
+  Referer: EXTERNAL_URLS.yahooFinanceReferer,
+  Origin: EXTERNAL_URLS.yahooFinanceOrigin,
 };
 
 export interface AnalystRecommendation {
@@ -61,9 +62,7 @@ async function fetchQuoteSummary(yahooSymbol: string): Promise<StockAnalysis | n
     "defaultKeyStatistics",
   ].join(",");
 
-  const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(
-    yahooSymbol,
-  )}?modules=${modules}`;
+  const url = yahooV10QuoteSummaryUrl(encodeURIComponent(yahooSymbol), modules);
 
   const res = await fetch(url, {
     headers: YAHOO_HEADERS,
@@ -123,9 +122,9 @@ function parseLastTdNumber(rowHtml: string): number {
 
 async function fetchFromStockAnalysis(sym: string): Promise<StockAnalysis | null> {
   // Public page with Wall Street consensus targets + rating breakdown.
-  // Example: https://stockanalysis.com/stocks/aapl/forecast/
+  // Example: /stocks/aapl/forecast/
   const lower = sym.toLowerCase();
-  const url = `https://stockanalysis.com/stocks/${encodeURIComponent(lower)}/forecast/`;
+  const url = `${EXTERNAL_URLS.stockanalysisBase.replace(/\/+$/g, "")}/stocks/${encodeURIComponent(lower)}/forecast/`;
 
   const res = await fetch(url, {
     headers: {

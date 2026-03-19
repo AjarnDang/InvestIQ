@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { SYMBOL_TO_META } from "@/src/data/sectorMap";
 import { resolveAliasToYahoo } from "@/src/data/indexAliases";
 import type { NewsItem, StockDetail } from "@/src/types";
+import {
+  EXTERNAL_URLS,
+  yahooChartUrl,
+  yahooV10QuoteSummaryUrl,
+  yahooV7QuoteUrl,
+  yahooV1SearchUrl,
+} from "@/src/config/externalUrls";
 
 export const revalidate = 60;
 
@@ -13,8 +20,8 @@ const YAHOO_HEADERS = {
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
   Accept: "application/json, text/plain, */*",
   "Accept-Language": "en-US,en;q=0.9",
-  Referer: "https://finance.yahoo.com/",
-  Origin: "https://finance.yahoo.com",
+  Referer: EXTERNAL_URLS.yahooFinanceReferer,
+  Origin: EXTERNAL_URLS.yahooFinanceOrigin,
 };
 
 /**
@@ -50,7 +57,11 @@ function resolveYahooSymbol(sym: string) {
  */
 async function fetchFromChart(yahooSymbol: string): Promise<Partial<StockDetail> | null> {
   const encoded = encodeURIComponent(yahooSymbol);
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encoded}?interval=1d&range=2d&lang=en`;
+  const url = yahooChartUrl(encoded, {
+    interval: "1d",
+    range: "2d",
+    lang: "en",
+  });
 
   const res = await fetch(url, {
     headers: YAHOO_HEADERS,
@@ -94,7 +105,7 @@ async function fetchFromQuoteSummary(
 ): Promise<Partial<StockDetail> | null> {
   try {
     const modules = "summaryProfile,summaryDetail,defaultKeyStatistics,assetProfile";
-    const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(yahooSymbol)}?modules=${modules}`;
+    const url = yahooV10QuoteSummaryUrl(encodeURIComponent(yahooSymbol), modules);
     const res = await fetch(url, {
       headers: YAHOO_HEADERS,
       next: { revalidate: 60 },
@@ -136,9 +147,11 @@ async function fetchFromQuoteV7(
   yahooSymbol: string,
 ): Promise<Partial<StockDetail> | null> {
   try {
-    const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(
-      yahooSymbol,
-    )}&lang=en&region=US`;
+    const url = yahooV7QuoteUrl({
+      symbols: encodeURIComponent(yahooSymbol),
+      lang: "en",
+      region: "US",
+    });
     const res = await fetch(url, {
       headers: YAHOO_HEADERS,
       next: { revalidate: 60 },
@@ -182,9 +195,15 @@ async function fetchNewsFromYahooSearch(
   query: string,
   limit = 8,
 ): Promise<NewsItem[]> {
-  const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(
-    query,
-  )}&quotesCount=0&newsCount=${encodeURIComponent(String(limit))}&listsCount=0&enableFuzzyQuery=false&lang=en&region=US`;
+  const url = yahooV1SearchUrl({
+    q: query,
+    quotesCount: 0,
+    newsCount: limit,
+    listsCount: 0,
+    enableFuzzyQuery: false,
+    lang: "en",
+    region: "US",
+  });
 
   try {
     const res = await fetch(url, {

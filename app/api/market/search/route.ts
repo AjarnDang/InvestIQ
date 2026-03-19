@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { STOCK_META } from "@/src/data/sectorMap";
-
-const YAHOO_SEARCH_URL = "https://query2.finance.yahoo.com/v1/finance/search";
-const ALPHA_SEARCH_URL = "https://www.alphavantage.co/query?function=SYMBOL_SEARCH";
+import { alphaVantageSymbolSearchUrl, yahooQuery2SearchUrl } from "@/src/config/externalUrls";
 
 interface YahooSearchResult {
   symbol: string;
@@ -73,9 +71,13 @@ function normalizeAlphaType(raw: string | undefined): string {
 
 async function searchYahoo(query: string): Promise<SearchResultItem[]> {
   try {
-    const url = `${YAHOO_SEARCH_URL}?q=${encodeURIComponent(
-      query,
-    )}&quotesCount=10&newsCount=0&enableFuzzyQuery=true&quotesQueryId=tss_match_phrase_query`;
+    const url = yahooQuery2SearchUrl({
+      q: query,
+      quotesCount: 10,
+      newsCount: 0,
+      enableFuzzyQuery: true,
+      quotesQueryId: "tss_match_phrase_query",
+    });
     const res = await fetch(url, {
       headers: {
         "User-Agent":
@@ -109,7 +111,7 @@ async function searchAlpha(query: string): Promise<SearchResultItem[]> {
   if (!apiKey) return [];
 
   try {
-    const url = `${ALPHA_SEARCH_URL}&keywords=${encodeURIComponent(query)}&apikey=${apiKey}`;
+    const url = alphaVantageSymbolSearchUrl(query, apiKey);
     const res = await fetch(url, {
       headers: {
         Accept: "application/json",

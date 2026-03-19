@@ -1,23 +1,24 @@
 import { NextResponse } from "next/server";
 import type { NewsItem } from "@/src/types";
+import { EXTERNAL_URLS } from "@/src/config/externalUrls";
 
 // ─── RSS Sources ──────────────────────────────────────────────────────────────
 
 const RSS_SOURCES = [
   {
-    url: "https://feeds.marketwatch.com/marketwatch/topstories/",
+    url: EXTERNAL_URLS.newsRssMarketWatch,
     name: "MarketWatch",
   },
   {
-    url: "https://www.cnbc.com/id/100003114/device/rss/rss.html",
+    url: EXTERNAL_URLS.newsRssCnbc,
     name: "CNBC",
   },
   {
-    url: "https://feeds.reuters.com/reuters/businessNews",
+    url: EXTERNAL_URLS.newsRssReuters,
     name: "Reuters",
   },
   {
-    url: "https://www.bangkokpost.com/rss/data/business.xml",
+    url: EXTERNAL_URLS.newsRssBangkokPost,
     name: "Bangkok Post",
   },
 ];

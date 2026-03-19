@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { EXTERNAL_URLS, yahooChartUrl } from "@/src/config/externalUrls";
 
 export const revalidate = 60;
 
@@ -7,17 +8,20 @@ const YAHOO_HEADERS = {
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
   Accept: "application/json, text/plain, */*",
   "Accept-Language": "en-US,en;q=0.9",
-  Referer: "https://finance.yahoo.com/",
-  Origin: "https://finance.yahoo.com",
+  Referer: EXTERNAL_URLS.yahooFinanceReferer,
+  Origin: EXTERNAL_URLS.yahooFinanceOrigin,
 };
 
 // GET /api/market/fx  -> { fxUsdThb }
 export async function GET() {
   // Yahoo Finance FX ticker: USDTHB=X (THB per 1 USD)
   const yahooSymbol = "USDTHB=X";
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
-    yahooSymbol,
-  )}?interval=1d&range=2d&lang=en&region=US`;
+  const url = yahooChartUrl(encodeURIComponent(yahooSymbol), {
+    interval: "1d",
+    range: "2d",
+    lang: "en",
+    region: "US",
+  });
 
   try {
     const res = await fetch(url, { headers: YAHOO_HEADERS, next: { revalidate } });
